@@ -1,0 +1,90 @@
+{{- $fullName := include "rybbit.fullname" $ -}}
+{{- $svcPort := .Values.backend.service.port -}}
+
+{{- if .Values.ingress.api.enabled -}}
+# API Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rybbit.labels" $ | nindent 4 }}
+  annotations:
+    {{- with .Values.ingress.api.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.api.className }}
+  ingressClassName: {{ .Values.ingress.api.className }}
+  {{- end }}
+  {{- if .Values.ingress.api.tls }}
+  tls:
+    {{- range .Values.ingress.api.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.api.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ $fullName }}-backend
+                port:
+                  number: {{ $svcPort }}
+          {{- end }}
+    {{- end }}
+---
+{{- end }}
+
+{{- if .Values.ingress.client.enabled -}}
+# Client Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}-client
+  labels:
+    {{- include "rybbit.labels" $ | nindent 4 }}
+  annotations:
+    {{- with .Values.ingress.client.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.client.className }}
+  ingressClassName: {{ .Values.ingress.client.className }}
+  {{- end }}
+  {{- if .Values.ingress.client.tls }}
+  tls:
+    {{- range .Values.ingress.client.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.client.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ $fullName }}-client
+                port:
+                  number: {{ $svcPort }}
+          {{- end }}
+    {{- end }}
+{{- end }}

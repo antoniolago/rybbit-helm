@@ -1,0 +1,93 @@
+# Default internal configuration test case
+global:
+  storageClass: ""
+  monitoring:
+    enabled: false
+    serviceMonitor:
+      enabled: false
+      interval: 30s
+      scrapeTimeout: 10s
+      labels: {}
+
+backend:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 1m
+      memory: 1Mi
+  # betterSecret:
+  #   secretName: ""
+  #   authKey: "better-auth-secret"
+  env:
+    NODE_ENV: "production"
+    BASE_URL: "https://rybbit.example.com"
+    DISABLE_SIGNUP: "false"
+    LOG_LEVEL: "info"
+    POSTGRES_PORT: 5432
+
+client:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+
+postgresql:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 8Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 1m
+      memory: 1Mi
+  auth:
+    database: rybbit
+    username: rybbit
+    password: rybbit
+  metrics:
+    enabled: false
+    serviceMonitor:
+      enabled: false
+      interval: 30s
+      scrapeTimeout: 10s
+      labels: {}
+
+clickhouse:
+  enabled: true
+  replicaCount: 1
+  shards: 1
+  keeper:
+    replicaCount: 1
+  persistence:
+    enabled: true
+    size: 8Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 1m
+      memory: 1Mi
+  auth:
+    password: rybbit
+  metrics:
+    enabled: false
+    serviceMonitor:
+      enabled: false
+      interval: 30s
+      scrapeTimeout: 10s
+      labels: {}

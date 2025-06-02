@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-client
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rybbit.labels" . | nindent 4 }}
+    app.kubernetes.io/component: client
+  annotations:
+    rollme: {{ .Values.client.resources | toJson | sha256sum }}
+spec:
+  replicas: {{ .Values.client.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "rybbit.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rybbit.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: client
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- with .Values.global.podSecurityContext }}
+        {{- if .enabled }}
+        fsGroup: {{ .fsGroup }}
+        {{- end }}
+        {{- end }}
+      containers:
+        - name: client
+          image: "{{ .Values.client.image.repository }}:{{ .Values.client.image.tag }}"
+          imagePullPolicy: {{ .Values.client.image.pullPolicy }}
+          securityContext:
+            {{- with .Values.global.containerSecurityContext }}
+            {{- if .enabled }}
+            runAsUser: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: {{ .allowPrivilegeEscalation }}
+            {{- end }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.client.resources | nindent 12 }}
+          env:
+            {{- range $key, $value := .Values.client.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: NEXT_PUBLIC_API_URL
+              value: http://{{ .Release.Name }}-backend.{{ .Release.Namespace }}.svc.cluster.local:3000
+          {{- with .Values.client.livenessProbe }}
+          {{- if .enabled }}
+          livenessProbe:
+            {{- omit . "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.client.readinessProbe }}
+          {{- if .enabled }}
+          readinessProbe:
+            {{- omit . "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.client.startupProbe }}
+          {{- if .enabled }}
+          startupProbe:
+            {{- omit . "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- end }}
+      {{- with .Values.global.podAntiAffinity }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq . "hard" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  {{- include "rybbit.selectorLabels" $ | nindent 18 }}
+                  app.kubernetes.io/component: client
+              topologyKey: kubernetes.io/hostname
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    {{- include "rybbit.selectorLabels" $ | nindent 20 }}
+                    app.kubernetes.io/component: client
+                topologyKey: kubernetes.io/hostname
+          {{- end }}
+      {{- end }}

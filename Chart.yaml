@@ -1,0 +1,31 @@
+apiVersion: v2
+name: rybbit
+description: A Helm chart for Rybbit self-hosted analytics
+type: application
+version: 0.4.0
+appVersion: "1.0.0"
+kubeVersion: ">=1.19.0-0"
+maintainers:
+- name: Antônio Lago
+  url: https://github.com/antoniolago
+keywords:
+- analytics
+- self-hosted
+- rybbit
+home: https://github.com/antoniolago/rybbit-helm
+sources:
+- https://github.com/antoniolago/rybbit-helm
+
+dependencies:
+- name: postgresql
+  version: "12.6.3"
+  repository: https://charts.bitnami.com/bitnami
+  condition: postgresql.enabled
+  tags:
+  - postgresql
+- name: clickhouse
+  version: "9.2.4"
+  repository: https://charts.bitnami.com/bitnami
+  condition: clickhouse.enabled
+  tags:
+  - clickhouse

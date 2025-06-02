@@ -1,0 +1,178 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rybbit.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  annotations:
+    rollme: {{ .Values.backend.resources | toJson | sha256sum }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "rybbit.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "rybbit.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- with .Values.global.podSecurityContext }}
+        {{- if .enabled }}
+        fsGroup: {{ .fsGroup }}
+        {{- end }}
+        {{- end }}
+      initContainers:
+        - name: wait-for-clickhouse
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for ClickHouse to be ready..."
+              until wget -q --spider http://{{ .Release.Name }}-clickhouse.{{ .Release.Namespace }}.svc.cluster.local:8123/ping; do
+                echo "ClickHouse is not ready yet..."
+                sleep 2
+              done
+              echo "ClickHouse is ready!"
+        - name: wait-for-postgres
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL to be ready..."
+              until pg_isready -h {{ .Release.Name }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p {{ .Values.postgresql.primary.service.ports.postgresql }}; do
+                echo "PostgreSQL is not ready yet..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+      {{- with .Values.global.podAntiAffinity }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq . "hard" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: backend
+              topologyKey: kubernetes.io/hostname
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/component: backend
+                topologyKey: kubernetes.io/hostname
+          {{- end }}
+      {{- end }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          securityContext:
+            {{- with .Values.global.containerSecurityContext }}
+            {{- if .enabled }}
+            runAsUser: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: {{ .allowPrivilegeEscalation }}
+            {{- end }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          env:
+            {{- /* Add user-provided environment variables first */ -}}
+            {{- range $key, $value := .Values.backend.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- /* Add default database configuration only if not provided by user */ -}}
+            {{- if not (hasKey .Values.backend.env "CLICKHOUSE_HOST") }}
+            - name: CLICKHOUSE_HOST
+              value: {{ printf "http://%s-clickhouse.%s.svc.cluster.local:8123" .Release.Name .Release.Namespace | quote }}
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "CLICKHOUSE_USER") }}
+            - name: CLICKHOUSE_USER
+              value: {{ .Values.clickhouse.auth.username | quote }}
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "POSTGRES_HOST") }}
+            - name: POSTGRES_HOST
+              value: {{ .Release.Name }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "POSTGRES_PORT") }}
+            - name: POSTGRES_PORT
+              value: {{ .Values.postgresql.primary.service.ports.postgresql | quote }}
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "POSTGRES_DB") }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.auth.database | quote }}
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "POSTGRES_USER") }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.auth.username | quote }}
+            {{- end }}
+            {{- /* Add secrets only if using built-in databases */ -}}
+            {{- if and .Values.postgresql.enabled (not (hasKey .Values.backend.env "POSTGRES_PASSWORD")) }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.auth.existingSecret | default (printf "%s-postgresql" .Release.Name) }}
+                  key: {{ .Values.postgresql.auth.secretKeys.adminPasswordKey | default "postgres-password" }}
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "CLICKHOUSE_PASSWORD") }}
+            - name: CLICKHOUSE_PASSWORD
+              {{- if .Values.clickhouse.auth.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.clickhouse.auth.existingSecret }}
+                  key: {{ .Values.clickhouse.auth.existingSecretKey | default "clickhouse-password" }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-clickhouse
+                  key: admin-password
+              {{- end }}
+            {{- end }}
+            {{- /* Add auth secret only if not provided by user */ -}}
+            {{- if not (hasKey .Values.backend.env "BETTER_AUTH_SECRET") }}
+            {{- if .Values.backend.betterSecret.secretName }}
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.betterSecret.secretName }}
+                  key: {{ .Values.backend.betterSecret.authKey }}
+            {{- else }}
+            - name: BETTER_AUTH_SECRET
+              value: {{ randAlphaNum 32 | quote }}
+            {{- end }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.service.port }}
+              protocol: TCP
+          {{- with .Values.backend.livenessProbe }}
+          {{- if .enabled }}
+          livenessProbe:
+            {{- omit . "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.backend.readinessProbe }}
+          {{- if .enabled }}
+          readinessProbe:
+            {{- omit . "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.backend.startupProbe }}
+          {{- if .enabled }}
+          startupProbe:
+            {{- omit . "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- end }}
