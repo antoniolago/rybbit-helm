@@ -193,7 +193,3 @@ helm upgrade rybbit oci://harbor.lag0.com.br/library/rybbit -f values.yaml
 ```bash
 helm uninstall rybbit
 ```
-
-## License
-
-This chart is licensed under the MIT License.
