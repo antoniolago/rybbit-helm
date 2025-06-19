@@ -1,7 +1,7 @@
 dependencies:
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
-  version: 12.6.3
+  version: 12.7.12
 - name: clickhouse
   repository: https://charts.bitnami.com/bitnami
   version: 9.2.4
