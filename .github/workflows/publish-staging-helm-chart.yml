@@ -2,8 +2,8 @@ name: Helm Chart CI/CD
 
 on:
   push:
-    tags:
-    - 'v*-rc'
+    branches:
+    - staging
     # paths:
     # - '**/*.yaml'
     # - 'templates/**'
