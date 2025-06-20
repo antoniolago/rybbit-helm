@@ -14,7 +14,7 @@ on:
 
 
 env:
-  REGISTRY: harbor.lag0.com.br # Change this to your OCI registry
+  REGISTRY: harbor.lag0.com.br
   CHART_NAME: rybbit
 
 jobs:
