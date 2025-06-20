@@ -29,13 +29,13 @@ Below is a minimal configuration example for production usage, DB and Clickhouse
 ```yaml
 client:
   image:
-    tag: sha-446bb2b
+    tag: v1.2.0
   env:
     NEXT_PUBLIC_BACKEND_URL: "https://rybbit.lag0.com.br"
     NEXT_PUBLIC_DISABLE_SIGNUP: "false"
 backend:
   image:
-    tag: sha-446bb2b
+    tag: v1.2.0
   env:
     BASE_URL: "https://rybbit.lag0.com.br"
     DISABLE_SIGNUP: "false"
@@ -49,7 +49,7 @@ ingress:
       kubernetes.io/ingress.class: nginx
       cert-manager.io/cluster-issuer: letsencrypt-prod
       nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: /$2
+      nginx.ingress.kubernetes.io/rewrite-target: /api/$2
     hosts:
     - host: rybbit.lag0.com.br
       paths:
