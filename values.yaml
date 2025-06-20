@@ -152,7 +152,7 @@ postgresql:
   enabled: true
 
   passwordUpdateJob:
-    enabled: true
+    enabled: false
 
   # Even if postgresql disabled, this will be used to set POSTGRES_* envs
   auth:

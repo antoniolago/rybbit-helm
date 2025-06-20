@@ -44,6 +44,8 @@ client:
 
 postgresql:
   enabled: true
+  passwordUpdateJob:
+    enabled: false
   persistence:
     enabled: true
     size: 8Gi
@@ -57,7 +59,7 @@ postgresql:
   auth:
     database: rybbit
     username: rybbit
-    password: rybbit
+    postgresPassword: ""
   metrics:
     enabled: false
     serviceMonitor:
