@@ -3,7 +3,7 @@ name: Helm Chart CI/CD
 on:
   push:
     branches:
-    - main
+    - staging
     tags:
     - 'v*-rc'
     # paths:
