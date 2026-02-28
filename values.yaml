@@ -44,7 +44,7 @@ backend:
     targetPort: 3001
   env:
     NODE_ENV: production
-    DISABLE_SIGNUP: "true"
+    # DISABLE_SIGNUP: "true"
     # BASE_URL: ""
     ### USE clickhouse CHART VALUES INSTEAD, ITS SAFER
     # CLICKHOUSE_USER: "rybbit"
