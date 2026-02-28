@@ -152,6 +152,31 @@ jobs:
           echo "Backend ready replicas: $BACKEND_READY"
           echo "Client ready replicas: $CLIENT_READY"
 
+      - name: Verify backend is fully operational
+        run: |
+          echo "=== Verifying backend logs for 'Server listening' ==="
+          BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} \
+            -l app.kubernetes.io/component=backend \
+            -o jsonpath='{.items[0].metadata.name}')
+          
+          echo "Checking logs for backend pod: $BACKEND_POD"
+          
+          # Wait up to 60 seconds for the server to be listening
+          for i in {1..12}; do
+            if kubectl logs -n ${{ env.NAMESPACE }} $BACKEND_POD -c backend 2>/dev/null | grep -q "Server listening"; then
+              echo "✓ Backend is fully operational - 'Server listening' found in logs"
+              kubectl logs -n ${{ env.NAMESPACE }} $BACKEND_POD -c backend --tail=20
+              exit 0
+            fi
+            echo "Attempt $i/12: Waiting for backend to start listening..."
+            sleep 5
+          done
+          
+          echo "ERROR: Backend did not show 'Server listening' in logs within 60 seconds"
+          echo "=== Full backend logs ==="
+          kubectl logs -n ${{ env.NAMESPACE }} $BACKEND_POD -c backend || true
+          exit 1
+
       - name: Show pod logs on failure
         if: failure()
         run: |
@@ -180,210 +205,3 @@ jobs:
           # Delete namespace with force to avoid hanging
           kubectl delete namespace ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 || true
           echo "✓ Cleanup completed"
-
-  k3s-test:
-    name: K3s Integration Test
-    runs-on: ubuntu-latest
-    needs: [lint, template]
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Set up Helm
-      uses: azure/setup-helm@v3
-      with:
-        version: v3.12.3
-
-    - name: Install yq
-      run: |
-        echo "=== Installing yq ==="
-        wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-        chmod +x /usr/local/bin/yq
-        echo "✓ yq installed successfully"
-
-    - name: Install k3s
-      run: |
-        echo "=== Installing k3s ==="
-        curl -sfL https://get.k3s.io | sh -
-        sudo chmod 644 /etc/rancher/k3s/k3s.yaml
-        mkdir -p ~/.kube
-        sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-        sudo chown $USER:$USER ~/.kube/config
-        export KUBECONFIG=~/.kube/config
-        echo "✓ k3s installed successfully"
-
-    - name: Wait for k3s to be ready
-      run: |
-        echo "=== Waiting for k3s to be ready ==="
-        timeout 60s bash -c 'until kubectl get nodes; do sleep 2; done'
-        echo "✓ k3s is ready"
-
-    - name: Install CRDs
-      run: |
-        echo "=== Installing CloudNativePG CRDs ==="
-        kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.23/releases/cnpg-1.23.2.yaml
-        echo "✓ CloudNativePG CRDs installed"
-
-        echo "=== Installing ClickHouse CRDs ==="
-        kubectl apply -f https://github.com/Altinity/clickhouse-operator/releases/download/v0.23.3/clickhouse-operator-install-bundle.yaml
-        echo "✓ ClickHouse CRDs installed"
-
-        echo "=== Waiting for CRDs to be established ==="
-        kubectl wait --for=condition=established --timeout=60s crd/cluster.postgresql.cnpg.io
-        kubectl wait --for=condition=established --timeout=60s crd/clickhouseinstallations.clickhouse.altinity.com
-        kubectl wait --for=condition=established --timeout=60s crd/clickhousekeeperinstallations.clickhouse-keeper.altinity.com
-        echo "✓ All CRDs are ready"
-
-    - name: Create test directories
-      run: |
-        echo "=== Creating test directories ==="
-        mkdir -p test/output test/logs
-        echo "✓ Test directories created successfully"
-
-    - name: Update Helm dependencies
-      run: |
-        if [ ! "$(ls -A charts)" ]; then
-          echo "=== Updating Helm dependencies ==="
-          helm dependency update .
-          echo "✓ Helm dependencies updated successfully"
-        else
-          echo "=== Using existing dependencies ==="
-          echo "✓ Using existing dependencies"
-        fi
-
-    - name: Generate templates
-      id: generate
-      run: |
-        for test_file in test/test-cases/*.yaml; do
-          test_name=$(basename "$test_file" .yaml)
-          echo "=== Generating template for: $test_name ==="
-          helm template rybbit . -f "$test_file" > "test/output/${test_name}-output.yaml"
-          echo "✓ Template generated successfully for $test_name"
-        done
-
-    - name: Validate YAML syntax
-      run: |
-        for test_file in test/test-cases/*.yaml; do
-          test_name=$(basename "$test_file" .yaml)
-          echo "=== Validating YAML for: $test_name ==="
-          if ! yq eval '.' "test/output/${test_name}-output.yaml" > /dev/null 2>&1; then
-            echo "Invalid YAML syntax in ${test_name}-output.yaml"
-            yq eval '.' "test/output/${test_name}-output.yaml"
-            exit 1
-          fi
-          echo "✓ YAML syntax validated successfully for $test_name"
-        done
-
-    - name: Check for unrendered templates
-      run: |
-        for test_file in test/test-cases/*.yaml; do
-          test_name=$(basename "$test_file" .yaml)
-          echo "=== Checking for unrendered templates in: $test_name ==="
-          if grep -q "{{.*}}" "test/output/${test_name}-output.yaml"; then
-            echo "Found unrendered template variables in ${test_name}-output.yaml"
-            cat "test/output/${test_name}-output.yaml"
-            exit 1
-          fi
-          echo "✓ No unrendered templates found in $test_name"
-        done
-
-    - name: Validate Kubernetes resources
-      run: |
-        for test_file in test/test-cases/*.yaml; do
-          test_name=$(basename "$test_file" .yaml)
-          echo "=== Validating Kubernetes resources for: $test_name ==="
-          
-          if grep -q "kind: ServiceMonitor" "test/output/${test_name}-output.yaml"; then
-            if ! kubectl get crd servicemonitors.monitoring.coreos.com >/dev/null 2>&1; then
-              echo "Skipping ServiceMonitor validation as Prometheus Operator CRDs are not installed"
-              yq eval 'select(.kind != "ServiceMonitor")' "test/output/${test_name}-output.yaml" > "test/output/${test_name}-output-temp.yaml"
-              if [ -s "test/output/${test_name}-output-temp.yaml" ]; then
-                kubectl apply --dry-run=client -f "test/output/${test_name}-output-temp.yaml"
-              else
-                echo "No resources to validate after removing ServiceMonitor resources"
-              fi
-              rm "test/output/${test_name}-output-temp.yaml"
-            else
-              kubectl apply --dry-run=client -f "test/output/${test_name}-output.yaml"
-            fi
-          else
-            kubectl apply --dry-run=client -f "test/output/${test_name}-output.yaml"
-          fi
-          echo "✓ Kubernetes resources validated successfully for $test_name"
-        done
-
-    - name: Check required resources
-      run: |
-        for test_file in test/test-cases/*.yaml; do
-          test_name=$(basename "$test_file" .yaml)
-          echo "=== Checking required resources for: $test_name ==="
-          if ! grep -q "kind: Deployment\|kind: Service\|kind: ConfigMap\|kind: Secret" "test/output/${test_name}-output.yaml"; then
-            echo "Missing required Kubernetes resources in ${test_name}-output.yaml"
-            exit 1
-          fi
-          echo "✓ Required resources found in $test_name"
-        done
-
-    - name: Deploy and test resources
-      run: |
-        for test_file in test/test-cases/*.yaml; do
-          test_name=$(basename "$test_file" .yaml)
-          namespace="test-${test_name}-$(date +%m%d%H%M)"
-          namespace=$(echo "$namespace" | tr '[:upper:]' '[:lower:]' | tr '_' '-' | cut -c 1-63 | sed 's/-$//')
-          
-          echo "=== Testing $test_name in namespace: $namespace ==="
-          kubectl create namespace "$namespace"
-          
-          echo "Applying resources..."
-          helm template rybbit . -f "$test_file" --namespace "$namespace" | kubectl apply -f - -n "$namespace"
-          
-          echo "=== Initial Status Check ==="
-          echo "Deployments:"
-          kubectl get deployments -n "$namespace" -o wide
-          
-          echo -e "\nPods:"
-          kubectl get pods -n "$namespace" -o wide
-          
-          echo -e "\nRecent Events:"
-          kubectl get events -n "$namespace" --sort-by='.lastTimestamp' | tail -n 20
-          
-          echo -e "\nMonitoring deployments..."
-          while true; do
-            echo "=== Current Status ==="
-            kubectl get deployments,pods -n "$namespace" -o wide
-            
-            ready_count=$(kubectl get deployments -n "$namespace" -o jsonpath='{.items[*].status.readyReplicas}' | tr ' ' '\n' | grep -v "^$" | wc -l)
-            total_count=$(kubectl get deployments -n "$namespace" -o jsonpath='{.items[*].status.replicas}' | tr ' ' '\n' | grep -v "^$" | wc -l)
-            
-            if [ "$ready_count" -eq "$total_count" ] && [ "$total_count" -gt 0 ]; then
-              echo "All deployments are ready!"
-              break
-            fi
-            
-            if kubectl get pods -n "$namespace" | grep -q "Error\|CrashLoopBackOff\|ImagePullBackOff\|Terminating"; then
-              echo "Found failed or terminating pods. Checking details..."
-              kubectl get pods -n "$namespace" | grep -E "Error|CrashLoopBackOff|ImagePullBackOff|Terminating"
-              echo -e "\nPod Events:"
-              kubectl get events -n "$namespace" --sort-by='.lastTimestamp' | grep -E "Error|Warning|Failed"
-              echo -e "\nPod Details:"
-              for pod in $(kubectl get pods -n "$namespace" -o jsonpath='{.items[*].metadata.name}'); do
-                echo -e "\n=== $pod ==="
-                kubectl describe pod -n "$namespace" "$pod" | grep -A 10 "Events:"
-              done
-              exit 1
-            fi
-            
-            sleep 5
-          done
-          
-          echo "=== Cleaning up ==="
-          
-          # Manually delete ClickHouse resources that might hang helm uninstall
-          echo "Deleting ClickHouseInstallation objects in namespace $namespace..."
-          kubectl delete clickhouseinstallation --all -n "$namespace" --ignore-not-found=true --force --grace-period=0 || true
-          kubectl delete clickhousekeeperinstallation --all -n "$namespace" --ignore-not-found=true --force --grace-period=0 || true
-          
-          # Delete namespace with force to avoid hanging
-          kubectl delete namespace "$namespace" --force --grace-period=0
-          echo "✓ Cleanup completed for $test_name"
-        done
