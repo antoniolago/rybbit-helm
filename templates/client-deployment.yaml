@@ -13,6 +13,7 @@ spec:
   selector:
     matchLabels:
       {{- include "rybbit.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: client
   template:
     metadata:
       labels:
@@ -50,6 +51,10 @@ spec:
             {{- end }}
             - name: NEXT_PUBLIC_API_URL
               value: http://{{ .Release.Name }}-backend.{{ .Release.Namespace }}.svc.cluster.local:3000
+          ports:
+            - name: http
+              containerPort: {{ .Values.client.service.targetPort }}
+              protocol: TCP
           {{- with .Values.client.livenessProbe }}
           {{- if .enabled }}
           livenessProbe:

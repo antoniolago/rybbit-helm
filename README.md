@@ -14,12 +14,13 @@ This chart is tested only to a certain point, be sure to ALWAYS backup Postgres 
 
 ## Installation
 
+
 ```bash
 # Install with default values
-helm install rybbit oci://harbor.lag0.com.br/library/rybbit
+helm install rybbit oci://ghcr.io/antoniolago/rybbit
 
 # Install with custom values
-helm install rybbit oci://harbor.lag0.com.br/library/rybbit -f values.yaml
+helm install rybbit oci://ghcr.io/antoniolago/rybbit -f values.yaml
 ```
 
 ## Minimal Running Example
@@ -81,14 +82,14 @@ ingress:
 
 This chart uses the following external dependencies:
 
-### PostgreSQL (Bitnami)
+### PostgreSQL (CloudNativePG)
 
-The chart uses Bitnami's PostgreSQL chart as a dependency. For detailed configuration options, refer to:
-[Bitnami PostgreSQL Parameters](https://github.com/bitnami/charts/tree/main/bitnami/postgresql#parameters)
+The chart uses CloudNativePG chart as a dependency. For detailed configuration options, refer to:
+[CloudNativePG Parameters](https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml)
 
 ### ClickHouse
 
-The chart uses the ClickHouse Operator for ClickHouse deployment. For detailed configuration options, refer to:
+The chart uses Altinity Operator for ClickHouse deployment. For detailed configuration options, refer to:
 [Bitnami Clickhouse Parameters](https://github.com/bitnami/charts/tree/main/bitnami/clickhouse)
 
 ## Configuration
@@ -131,11 +132,11 @@ The following table lists the configurable parameters of the Rybbit chart and th
 
 ### PostgreSQL parameters
 
-For all available PostgreSQL parameters, see [Bitnami PostgreSQL Parameters](https://github.com/bitnami/charts/tree/main/bitnami/postgresql#parameters)
+For all available PostgreSQL parameters, see [CloudNativePG Parameters](https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml)
 
 ### ClickHouse parameters
 
-For all available ClickHouse parameters, see [ClickHouse Operator Configuration](https://clickhouse.com/docs/en/kubernetes/operator)
+For all available ClickHouse parameters, see [Altinity Operator Configuration](https://clickhouse.com/docs/en/kubernetes/operator)
 
 ### Ingress parameters
 
@@ -185,7 +186,7 @@ client:
 ## Upgrading
 
 ```bash
-helm upgrade rybbit oci://harbor.lag0.com.br/library/rybbit -f values.yaml
+helm upgrade rybbit oci://ghcr.io/antoniolago/rybbit -f values.yaml
 ```
 
 ## Uninstalling

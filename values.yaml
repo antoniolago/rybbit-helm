@@ -45,55 +45,55 @@ backend:
   env:
     NODE_ENV: production
     DISABLE_SIGNUP: "true"
-    CLICKHOUSE_DB: default
     # BASE_URL: ""
     ### USE clickhouse CHART VALUES INSTEAD, ITS SAFER
     # CLICKHOUSE_USER: "rybbit"
     # CLICKHOUSE_PASSWORD: "rybbit"
+    # CLICKHOUSE_DB: default
     # CLICKHOUSE_HOST: "default-will-come-from-clickhouse-chart"
 
-    ### USE postgres.auth INSTEAD, ITS SAFER
+    ### USE postgres values instead, ITS SAFER
     # POSTGRES_HOST: postgresql-postgresql
     # POSTGRES_DB: analytics
     # POSTGRES_USER: postgres
     # POSTGRES_PASSWORD: "use-secret-instead"
-    POSTGRES_PORT: 5432
+    # POSTGRES_PORT: 5432
 
   betterSecret:
     secretName: ""
     authKey: "better-auth-secret"
-  # livenessProbe:
-  #   httpGet:
-  #     path: /health
-  #     port: 3001
-  #   enabled: true
-  #   initialDelaySeconds: 10
-  #   periodSeconds: 10
-  #   timeoutSeconds: 5
-  #   failureThreshold: 6
-  #   successThreshold: 1
-  # readinessProbe:
-  #   httpGet:
-  #     path: /health
-  #     port: 3001
-  #   enabled: true
-  #   initialDelaySeconds: 10
-  #   periodSeconds: 10
-  #   timeoutSeconds: 5
-  #   failureThreshold: 6
-  #   successThreshold: 1
-  # startupProbe:
-  #   httpGet:
-  #     path: /health
-  #     port: 3001
-  #   enabled: true
-  #   initialDelaySeconds: 10
-  #   periodSeconds: 10
-  #   timeoutSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 3001
+    enabled: false
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 3001
+    enabled: false
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  startupProbe:
+    httpGet:
+      path: /health
+      port: 3001
+    enabled: false
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
 
-  # Client application configuration
+# Client application configuration
 client:
   enabled: true
   image:
@@ -115,153 +115,98 @@ client:
   env:
     NODE_ENV: production
     NEXT_PUBLIC_BACKEND_URL: ""
-  # livenessProbe:
-  #   httpGet:
-  #     path: /
-  #     port: 3002
-  #   enabled: true
-  #   initialDelaySeconds: 60
-  #   periodSeconds: 10
-  #   timeoutSeconds: 5
-  #   failureThreshold: 6
-  #   successThreshold: 1
-  # readinessProbe:
-  #   httpGet:
-  #     path: /
-  #     port: 3002
-  #   enabled: true
-  #   initialDelaySeconds: 60
-  #   periodSeconds: 10
-  #   timeoutSeconds: 5
-  #   failureThreshold: 6
-  #   successThreshold: 1
-  # startupProbe:
-  #   httpGet:
-  #     path: /
-  #     port: 3002
-  #   enabled: true
-  #   initialDelaySeconds: 60
-  #   periodSeconds: 10
-  #   timeoutSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 3002
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 3002
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  startupProbe:
+    httpGet:
+      path: /
+      port: 3002
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
 
-  # PostgreSQL configuration
-  #https://github.com/bitnami/charts/blob/main/bitnami/postgresql/values.yaml
+# PostgreSQL configuration (CloudNativePG Cluster)
+# See: https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml
 postgresql:
   enabled: true
+  type: postgresql
+  mode: standalone
+  name: postgresql
+  cluster:
+    # -- Number of instances
+    instances: 1
+  storage:
+    size: 10Gi
+    storageClass: ""
 
-  passwordUpdateJob:
-    enabled: false
-
-  # Even if postgresql disabled, this will be used to set POSTGRES_* envs
-  auth:
-    username: postgres
-    database: analytics
-    # existingSecret: ""
-    # secretKeys:
-    #   password: postgres-password
-  primary:
-    persistence:
-      enabled: true
-      storageClass: ""
-      size: 10Gi
-      accessModes:
-      - ReadWriteOnce
-    resources:
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 30m
-        memory: 20Mi
-    service:
-      type: ClusterIP
-      ports:
-        postgresql: 5432
-  metrics:
-    enabled: false
-    serviceMonitor:
-      enabled: false
-      interval: 30s
-      scrapeTimeout: 10s
-      labels: {}
-  securityContext:
-    enabled: true
-    fsGroup: 1001
-    runAsUser: 1001
-  containerSecurityContext:
-    enabled: true
-    runAsNonRoot: true
-    allowPrivilegeEscalation: false
-  volumePermissions:
-    enabled: true
-  # backup:
-  #   enabled: true
-  #   schedule: "0 0 * * *"
-  #   retention: 7
-
-  # ClickHouse configuration
-  #https://github.com/bitnami/charts/blob/main/bitnami/clickhouse/values.yaml
+# ClickHouse configuration (Altinity Operator)
+# See: https://github.com/Altinity/clickhouse-operator/tree/master/deploy/helm/clickhouse
 clickhouse:
   enabled: true
-  replicaCount: 1
-  shards: 1
-  usePasswordFiles: false
-  # Even if clickhouse disabled, these auth values will be used to set CLICKHOUSE_* envs
-  # auth:
-  # password: "Test"
-  image:
-    registry: docker.io
-    repository: bitnami/clickhouse
-    tag: 25.5.1-debian-12-r0
-    pullPolicy: IfNotPresent
-  service:
-    type: ClusterIP
-    ports:
-      http: 8123
-      tcp: 9000
-  resources:
-    limits:
-      cpu: 500m
-      memory: 2Gi
-    requests:
-      cpu: 10m
-      memory: 600Mi
-  persistence:
-    enabled: true
-    storageClass: ""
-    size: 20Gi
-    accessModes:
-    - ReadWriteOnce
-  securityContext:
-    enabled: true
-    fsGroup: 1001
-    runAsUser: 1001
-  containerSecurityContext:
-    enabled: true
-    runAsNonRoot: true
-    allowPrivilegeEscalation: false
-  metrics:
-    enabled: false
-    serviceMonitor:
-      enabled: false
-      interval: 30s
-      scrapeTimeout: 10s
-      labels: {}
+  clickhouse:
+    replicasCount: 1
+    shardsCount: 1
+    defaultUser:
+      # Default password - should be overridden in production
+      # The chart will store this in rybbit-clickhouse-credentials secret
+      password: "changeme"
+      password_secret_name: ""
+      # Allow access from pod networks (private RFC1918 ranges)
+      networks_ip:
+        - "10.0.0.0/8"
+        - "172.16.0.0/12"
+        - "192.168.0.0/16"
+        - "127.0.0.1"
+        - "::1"
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: ""
+    resources:
+      requests:
+        memory: "600Mi"
+        cpu: "100m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
   keeper:
     enabled: true
     replicaCount: 1
-    persistence:
-      enabled: true
+    localStorage:
       size: 8Gi
+      storageClass: ""
     resources:
-      limits:
-        cpu: 500m
-        memory: 1Gi
-      requests:
-        cpu: 10m
-        memory: 128Mi
+      memoryRequestsMiB: 128Mi
+      cpuRequestsMs: 100
+      memoryLimitsMiB: 1Gi
+      cpuLimitsMs: 500
+  operator:
+    enabled: true
+  auth:
+    username: default
+    existingSecret: ""
+    existingSecretKey: "admin-password"
 
 # Ingress configuration
 ingress:

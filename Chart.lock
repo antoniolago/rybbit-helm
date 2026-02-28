@@ -1,9 +1,9 @@
 dependencies:
-- name: postgresql
-  repository: https://charts.bitnami.com/bitnami
-  version: 16.7.13
+- name: cluster
+  repository: https://cloudnative-pg.github.io/charts
+  version: 0.5.0
 - name: clickhouse
-  repository: https://charts.bitnami.com/bitnami
-  version: 9.2.4
-digest: sha256:60620f27d1501bea894dda79017e9edebb56d1eb4bf463822496f5fde0a9c6d5
-generated: "2025-06-20T00:22:08.0941244-03:00"
+  repository: https://helm.altinity.com/
+  version: 0.3.9
+digest: sha256:133ce624c878cd7dc7121ca96116b64b75ea8ebc70ec392f0a1978f5fbc2a2a0
+generated: "2026-02-27T20:32:40.398466384-03:00"
