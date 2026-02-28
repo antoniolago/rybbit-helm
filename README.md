@@ -90,7 +90,7 @@ The chart uses CloudNativePG chart as a dependency. For detailed configuration o
 ### ClickHouse
 
 The chart uses Altinity Operator for ClickHouse deployment. For detailed configuration options, refer to:
-[Bitnami Clickhouse Parameters](https://github.com/bitnami/charts/tree/main/bitnami/clickhouse)
+[Altinity Clickhouse Parameters](https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse)
 
 ## Configuration
 
@@ -136,7 +136,7 @@ For all available PostgreSQL parameters, see [CloudNativePG Parameters](https://
 
 ### ClickHouse parameters
 
-For all available ClickHouse parameters, see [Altinity Operator Configuration](https://clickhouse.com/docs/en/kubernetes/operator)
+For all available ClickHouse parameters, see [Altinity Operator Configuration](https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse)
 
 ### Ingress parameters
 
