@@ -94,12 +94,7 @@ jobs:
         uses: helm/kind-action@v1
         with:
           cluster_name: ${{ env.KIND_CLUSTER_NAME }}
-          config: |
-            kind: Cluster
-            apiVersion: kind.x-k8s.io/v1alpha4
-            nodes:
-            - role: control-plane
-            - role: worker
+          config: .github/kind-config.yaml
 
       - name: Install CloudNativePG Operator
         run: |
