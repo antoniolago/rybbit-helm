@@ -207,6 +207,22 @@ jobs:
         timeout 60s bash -c 'until kubectl get nodes; do sleep 2; done'
         echo "✓ k3s is ready"
 
+    - name: Install CRDs
+      run: |
+        echo "=== Installing CloudNativePG CRDs ==="
+        kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.23/releases/cnpg-1.23.2.yaml
+        echo "✓ CloudNativePG CRDs installed"
+
+        echo "=== Installing ClickHouse CRDs ==="
+        kubectl apply -f https://github.com/Altinity/clickhouse-operator/releases/download/v0.23.3/clickhouse-operator-install-bundle.yaml
+        echo "✓ ClickHouse CRDs installed"
+
+        echo "=== Waiting for CRDs to be established ==="
+        kubectl wait --for=condition=established --timeout=60s crd/cluster.postgresql.cnpg.io
+        kubectl wait --for=condition=established --timeout=60s crd/clickhouseinstallations.clickhouse.altinity.com
+        kubectl wait --for=condition=established --timeout=60s crd/clickhousekeeperinstallations.clickhouse-keeper.altinity.com
+        echo "✓ All CRDs are ready"
+
     - name: Create test directories
       run: |
         echo "=== Creating test directories ==="
