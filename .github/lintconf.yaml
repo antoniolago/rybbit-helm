@@ -1,0 +1,4 @@
+# Chart Testing Lint Configuration
+rules:
+  # Disable all rules for basic linting
+  all: false

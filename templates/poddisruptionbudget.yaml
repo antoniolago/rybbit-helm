@@ -1,0 +1,41 @@
+{{- if .Values.global.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rybbit.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  {{- if .Values.global.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.global.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.global.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.global.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "rybbit.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-client
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rybbit.labels" . | nindent 4 }}
+    app.kubernetes.io/component: client
+spec:
+  {{- if .Values.global.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.global.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.global.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.global.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "rybbit.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: client
+{{- end }}

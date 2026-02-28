@@ -1,0 +1,45 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+  $ helm get all {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+{{ if .Values.ingress.client.enabled -}}
+Application URL:
+{{- range .Values.ingress.client.hosts }}
+  http{{ if $.Values.ingress.client.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+Get the application URL by running these commands:
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "rybbit.name" . }},app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=client" -o jsonpath="{.items[0].metadata.name}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:3002
+{{- end }}
+
+Components deployed:
+- Backend: {{ if .Values.backend.enabled }}✓{{ else }}✗{{ end }}
+- Client: {{ if .Values.client.enabled }}✓{{ else }}✗{{ end }}
+- PostgreSQL (CloudNativePG): {{ if .Values.postgresql.enabled }}✓{{ else }}✗{{ end }}
+- ClickHouse (Altinity): {{ if .Values.clickhouse.enabled }}✓{{ else }}✗{{ end }}
+
+🎉 Your Rybbit installation is production-ready!
+
+The post-install job has automatically configured:
+✓ ClickHouse network access (RFC1918 + localhost)
+✓ PostgreSQL analytics database
+✓ PostgreSQL user authentication
+✓ Database schema migrations
+
+Wait for all pods to be ready (~2-3 minutes), then verify:
+  kubectl get pods -n {{ .Release.Namespace }}
+
+To verify your installation:
+  curl -fsSL https://raw.githubusercontent.com/antoniolago/rybbit-helm/main/scripts/verify-install.sh | bash
+
+For production deployments, update these values:
+- clickhouse.clickhouse.defaultUser.password (default: "changeme")
+- Review resource limits in values.yaml
+- Configure ingress for external access

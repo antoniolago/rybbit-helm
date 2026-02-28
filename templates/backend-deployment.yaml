@@ -38,7 +38,7 @@ spec:
             - -c
             - |
               echo "Waiting for ClickHouse to be ready..."
-              until wget -q --spider http://{{ .Release.Name }}-clickhouse.{{ .Release.Namespace }}.svc.cluster.local:8123/ping; do
+              until wget -q --spider http://clickhouse-{{ .Release.Name }}-clickhouse.{{ .Release.Namespace }}.svc.cluster.local:8123/ping; do
                 echo "ClickHouse is not ready yet..."
                 sleep 2
               done
@@ -50,7 +50,7 @@ spec:
             - -c
             - |
               echo "Waiting for PostgreSQL to be ready..."
-              until pg_isready -h {{ .Release.Name }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p {{ .Values.postgresql.primary.service.ports.postgresql }}; do
+              until pg_isready -h {{ .Release.Name }}-postgresql-rw.{{ .Release.Namespace }}.svc.cluster.local -p 5432; do
                 echo "PostgreSQL is not ready yet..."
                 sleep 2
               done
@@ -97,49 +97,67 @@ spec:
             {{- /* Add default database configuration only if not provided by user */ -}}
             {{- if not (hasKey .Values.backend.env "CLICKHOUSE_HOST") }}
             - name: CLICKHOUSE_HOST
-              value: {{ printf "http://%s-clickhouse.%s.svc.cluster.local:8123" .Release.Name .Release.Namespace | quote }}
+              value: {{ printf "http://clickhouse-%s-clickhouse.%s.svc.cluster.local:8123" .Release.Name .Release.Namespace | quote }}
             {{- end }}
             {{- if not (hasKey .Values.backend.env "CLICKHOUSE_USER") }}
             - name: CLICKHOUSE_USER
-              value: {{ .Values.clickhouse.auth.username | quote }}
-            {{- end }}
-            {{- if not (hasKey .Values.backend.env "POSTGRES_HOST") }}
-            - name: POSTGRES_HOST
-              value: {{ .Release.Name }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local
-            {{- end }}
-            {{- if not (hasKey .Values.backend.env "POSTGRES_PORT") }}
-            - name: POSTGRES_PORT
-              value: {{ .Values.postgresql.primary.service.ports.postgresql | quote }}
-            {{- end }}
-            {{- if not (hasKey .Values.backend.env "POSTGRES_DB") }}
-            - name: POSTGRES_DB
-              value: {{ .Values.postgresql.auth.database | quote }}
-            {{- end }}
-            {{- if not (hasKey .Values.backend.env "POSTGRES_USER") }}
-            - name: POSTGRES_USER
-              value: {{ .Values.postgresql.auth.username | quote }}
-            {{- end }}
-            {{- /* Add secrets only if using built-in databases */ -}}
-            {{- if and .Values.postgresql.enabled (not (hasKey .Values.backend.env "POSTGRES_PASSWORD")) }}
-            - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.postgresql.auth.existingSecret | default (printf "%s-postgresql" .Release.Name) }}
-                  key: {{ .Values.postgresql.auth.secretKeys.adminPasswordKey | default "postgres-password" }}
+                  name: {{ .Release.Name }}-clickhouse-credentials
+                  key: user
             {{- end }}
+
             {{- if not (hasKey .Values.backend.env "CLICKHOUSE_PASSWORD") }}
             - name: CLICKHOUSE_PASSWORD
               {{- if .Values.clickhouse.auth.existingSecret }}
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.clickhouse.auth.existingSecret }}
-                  key: {{ .Values.clickhouse.auth.existingSecretKey | default "clickhouse-password" }}
+                  key: {{ .Values.clickhouse.auth.existingSecretKey | default "password" }}
+              {{- else if .Values.clickhouse.clickhouse.defaultUser.password }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-clickhouse-credentials
+                  key: password
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-clickhouse
-                  key: admin-password
+                  name: {{ .Release.Name }}-clickhouse-password
+                  key: password
               {{- end }}
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "POSTGRES_HOST") }}
+            - name: POSTGRES_HOST
+              value: {{ .Release.Name }}-postgresql-rw.{{ .Release.Namespace }}.svc.cluster.local
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "POSTGRES_PORT") }}
+            - name: POSTGRES_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgresql-app
+                  key: port
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "POSTGRES_DB") }}
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgresql-app
+                  key: dbname
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "POSTGRES_USER") }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgresql-app
+                  key: user
+            {{- end }}
+            {{- /* Add secrets only if using built-in databases */ -}}
+            {{- if and .Values.postgresql.enabled (not (hasKey .Values.backend.env "POSTGRES_PASSWORD")) }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-postgresql-app" .Release.Name }}
+                  key: password
             {{- end }}
             {{- /* Add auth secret only if not provided by user */ -}}
             {{- if not (hasKey .Values.backend.env "BETTER_AUTH_SECRET") }}
@@ -151,12 +169,15 @@ spec:
                   key: {{ .Values.backend.betterSecret.authKey }}
             {{- else }}
             - name: BETTER_AUTH_SECRET
-              value: {{ randAlphaNum 32 | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-better-auth
+                  key: {{ .Values.backend.betterSecret.authKey | default "better-auth-secret" }}
             {{- end }}
             {{- end }}
           ports:
             - name: http
-              containerPort: {{ .Values.backend.service.port }}
+              containerPort: {{ .Values.backend.service.targetPort }}
               protocol: TCP
           {{- with .Values.backend.livenessProbe }}
           {{- if .enabled }}

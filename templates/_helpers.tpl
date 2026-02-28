@@ -74,4 +74,15 @@ Generate random string
 {{- define "rybbit.randomString" -}}
 {{- $string := randAlphaNum 16 -}}
 {{- $string -}}
-{{- end -}} 
+{{- end -}}
+
+{{/*
+Service account name
+*/}}
+{{- define "rybbit.serviceAccountName" -}}
+{{- if .Values.serviceAccount.name }}
+{{- .Values.serviceAccount.name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- .Release.Name }}-cleanup
+{{- end }}
+{{- end }} 

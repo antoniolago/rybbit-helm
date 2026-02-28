@@ -84,7 +84,7 @@ spec:
               service:
                 name: {{ $fullName }}-client
                 port:
-                  number: {{ $svcPort }}
+                  number: {{ $.Values.client.service.port }}
           {{- end }}
     {{- end }}
 {{- end }}
