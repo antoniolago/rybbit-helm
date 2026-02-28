@@ -1,0 +1,81 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-pre-delete-cleanup"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "rybbit.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 30
+  template:
+    metadata:
+      name: "{{ .Release.Name }}-pre-delete-cleanup"
+      labels:
+        app.kubernetes.io/name: {{ include "rybbit.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ .Release.Name }}-cleanup
+      containers:
+      - name: cleanup
+        image: alpine/k8s:1.32.12
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=== Starting pre-delete cleanup ==="
+          
+          # Run all deletions in parallel for speed
+          (
+            # Delete StatefulSets managed by ClickHouse
+            kubectl delete statefulset -n {{ .Release.Namespace }} -l "app.kubernetes.io/name=clickhouse" --force --grace-period=0 --ignore-not-found=true 2>/dev/null &
+            
+            # Delete Pods managed by ClickHouse
+            kubectl delete pod -n {{ .Release.Namespace }} -l "app.kubernetes.io/name=clickhouse" --force --grace-period=0 --ignore-not-found=true 2>/dev/null &
+            
+            # Delete Keeper StatefulSets
+            kubectl delete statefulset -n {{ .Release.Namespace }} -l "app=clickhouse-keeper" --force --grace-period=0 --ignore-not-found=true 2>/dev/null &
+            
+            # Delete Keeper Pods
+            kubectl delete pod -n {{ .Release.Namespace }} -l "app=clickhouse-keeper" --force --grace-period=0 --ignore-not-found=true 2>/dev/null &
+            
+            # Wait for background deletions
+            wait
+          ) || true
+          
+          # Remove finalizers and delete CRDs in parallel
+          (
+            # Remove finalizers from ClickHouseInstallation objects
+            for chi in $(kubectl get clickhouseinstallation -n {{ .Release.Namespace }} -o name 2>/dev/null || true); do
+              kubectl patch $chi -n {{ .Release.Namespace }} --type=json -p='[{"op": "remove", "path": "/metadata/finalizers"}]' 2>/dev/null || true &
+            done
+            
+            # Remove finalizers from ClickHouseKeeperInstallation objects
+            for chk in $(kubectl get clickhousekeeperinstallation -n {{ .Release.Namespace }} -o name 2>/dev/null || true); do
+              kubectl patch $chk -n {{ .Release.Namespace }} --type=json -p='[{"op": "remove", "path": "/metadata/finalizers"}]' 2>/dev/null || true &
+            done
+            
+            wait
+          ) || true
+          
+          # Delete CRDs
+          kubectl delete clickhouseinstallation --all -n {{ .Release.Namespace }} --ignore-not-found=true --force --grace-period=0 2>/dev/null || true &
+          kubectl delete clickhousekeeperinstallation --all -n {{ .Release.Namespace }} --ignore-not-found=true --force --grace-period=0 2>/dev/null || true &
+          wait
+          
+          echo "=== Pre-delete cleanup completed ==="
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 32Mi

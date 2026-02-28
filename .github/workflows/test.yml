@@ -167,8 +167,19 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
+          echo "=== Cleaning up ==="
+          
+          # Manually delete ClickHouse resources that might hang helm uninstall
+          echo "Deleting ClickHouseInstallation objects..."
+          kubectl delete clickhouseinstallation --all --all-namespaces --ignore-not-found=true --force --grace-period=0 || true
+          kubectl delete clickhousekeeperinstallation --all --all-namespaces --ignore-not-found=true --force --grace-period=0 || true
+          
+          # Delete the helm release
           helm uninstall ${{ env.RELEASE_NAME }} -n ${{ env.NAMESPACE }} || true
-          kubectl delete namespace ${{ env.NAMESPACE }} --ignore-not-found || true
+          
+          # Delete namespace with force to avoid hanging
+          kubectl delete namespace ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 || true
+          echo "✓ Cleanup completed"
 
   k3s-test:
     name: K3s Integration Test
@@ -366,6 +377,13 @@ jobs:
           done
           
           echo "=== Cleaning up ==="
+          
+          # Manually delete ClickHouse resources that might hang helm uninstall
+          echo "Deleting ClickHouseInstallation objects in namespace $namespace..."
+          kubectl delete clickhouseinstallation --all -n "$namespace" --ignore-not-found=true --force --grace-period=0 || true
+          kubectl delete clickhousekeeperinstallation --all -n "$namespace" --ignore-not-found=true --force --grace-period=0 || true
+          
+          # Delete namespace with force to avoid hanging
           kubectl delete namespace "$namespace" --force --grace-period=0
           echo "✓ Cleanup completed for $test_name"
         done

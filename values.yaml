@@ -23,6 +23,12 @@ global:
   # Pod anti-affinity
   podAntiAffinity: "soft"
 
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
 # Backend application configuration
 backend:
   enabled: true
@@ -173,12 +179,9 @@ clickhouse:
       password: "changeme"
       password_secret_name: ""
       # Allow access from pod networks (private RFC1918 ranges)
-      networks_ip:
-        - "10.0.0.0/8"
-        - "172.16.0.0/12"
-        - "192.168.0.0/16"
-        - "127.0.0.1"
-        - "::1"
+      # Set to true to allow from any IP, or specify hostIP with a CIDR mask
+      allowExternalAccess: false
+      hostIP: "0.0.0.0/0"
     persistence:
       enabled: true
       size: 20Gi

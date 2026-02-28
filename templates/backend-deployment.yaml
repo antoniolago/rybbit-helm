@@ -101,7 +101,10 @@ spec:
             {{- end }}
             {{- if not (hasKey .Values.backend.env "CLICKHOUSE_USER") }}
             - name: CLICKHOUSE_USER
-              value: {{ .Values.clickhouse.auth.username | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-clickhouse-credentials
+                  key: user
             {{- end }}
 
             {{- if not (hasKey .Values.backend.env "CLICKHOUSE_PASSWORD") }}
