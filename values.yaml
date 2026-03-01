@@ -191,6 +191,8 @@ clickhouse:
   clickhouse:
     replicasCount: 1
     shardsCount: 1
+    image:
+      repository: docker.io/altinity/clickhouse-server
     defaultUser:
       # Default password - should be overridden in production
       # The chart will store this in rybbit-clickhouse-credentials secret
@@ -213,6 +215,7 @@ clickhouse:
         cpu: "1000m"
   keeper:
     enabled: true
+    image: docker.io/altinity/clickhouse-keeper
     replicaCount: 1
     localStorage:
       size: 8Gi
