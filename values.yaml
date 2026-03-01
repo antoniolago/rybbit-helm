@@ -167,17 +167,19 @@ postgresql:
     storageClass: ""
 
 # ClickHouse configuration (Altinity Operator)
-# See: https://github.com/Altinity/clickhouse-operator/blob/master/deploy/helm/clickhouse-operator/values.yaml
+# See: https://github.com/Altinity/helm-charts/blob/main/charts/clickhouse/values.yaml
 clickhouse:
   enabled: true
-  crdHook:
-    # crdHook.enabled -- enable automatic CRD installation/update via pre-install/pre-upgrade hooks
-    # when disabled, CRDs must be installed manually using kubectl apply
+  operator:
     enabled: true
-    image:
-      # crdHook.image.repository -- image repository for CRD installation job
-      repository: docker.io/alpine/k8s
-      tag: "1.32.12"
+    crdHook:
+      # crdHook.enabled -- enable automatic CRD installation/update via pre-install/pre-upgrade hooks
+      # when disabled, CRDs must be installed manually using kubectl apply
+      enabled: true
+      image:
+        # crdHook.image.repository -- image repository for CRD installation job
+        repository: docker.io/alpine/k8s
+        tag: "1.32.12"
   clickhouse:
     replicasCount: 1
     shardsCount: 1
@@ -212,8 +214,6 @@ clickhouse:
       cpuRequestsMs: 100
       memoryLimitsMiB: 1Gi
       cpuLimitsMs: 500
-  operator:
-    enabled: true
   auth:
     username: default
     existingSecret: ""
