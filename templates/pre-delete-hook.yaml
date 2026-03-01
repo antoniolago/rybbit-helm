@@ -26,7 +26,7 @@ spec:
       serviceAccountName: {{ .Release.Name }}-cleanup
       containers:
       - name: cleanup
-        image: alpine/k8s:1.32.12
+        image: docker.io/alpine/k8s:1.32.12
         command:
         - /bin/sh
         - -c

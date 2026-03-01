@@ -44,7 +44,7 @@ spec:
               done
               echo "ClickHouse is ready!"
         - name: wait-for-postgres
-          image: postgres:15-alpine
+          image: docker.io/postgres:15-alpine
           command:
             - sh
             - -c
