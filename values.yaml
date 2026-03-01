@@ -172,6 +172,13 @@ clickhouse:
   enabled: true
   operator:
     enabled: true
+    operator:
+      image:
+        registry: "docker.io"
+    metrics:
+      enabled: true
+      image:
+        registry: "docker.io"
     crdHook:
       # crdHook.enabled -- enable automatic CRD installation/update via pre-install/pre-upgrade hooks
       # when disabled, CRDs must be installed manually using kubectl apply
