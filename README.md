@@ -25,18 +25,18 @@ helm install rybbit oci://ghcr.io/antoniolago/rybbit -f values.yaml
 
 ## Minimal Running Example
 
-Below is a minimal configuration example for production usage, DB and Clickhouse secrets are managed by postgresql.auth and clickhouse.auth values:
+Below is a minimal configuration example for production usage, DB and Clickhouse secrets are managed by subcharts auth values:
 
 ```yaml
 client:
   image:
-    tag: v1.2.0
+    tag: v2.4.0
   env:
     NEXT_PUBLIC_BACKEND_URL: "https://rybbit.lag0.com.br"
     NEXT_PUBLIC_DISABLE_SIGNUP: "false"
 backend:
   image:
-    tag: v1.2.0
+    tag: v2.4.0
   env:
     BASE_URL: "https://rybbit.lag0.com.br"
     DISABLE_SIGNUP: "false"
