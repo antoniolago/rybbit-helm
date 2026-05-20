@@ -2,10 +2,6 @@
 
 A Helm chart for deploying [Rybbit](https://github.com/rybbit-io/rybbit) self-hosted analytics platform on Kubernetes.
 
-## Beware
-
-This chart is tested only to a certain point, be sure to ALWAYS backup Postgres and Clickhouse (the external charts have options for that, look for the links below), if you got any issues please submit it, also PRs are welcome.
-
 ## Prerequisites
 
 - Kubernetes 1.19+
@@ -30,13 +26,13 @@ Below is a minimal configuration example for production usage, DB and Clickhouse
 ```yaml
 client:
   image:
-    tag: v2.4.0
+    tag: v2.6.0
   env:
     NEXT_PUBLIC_BACKEND_URL: "https://rybbit.lag0.com.br"
     NEXT_PUBLIC_DISABLE_SIGNUP: "false"
 backend:
   image:
-    tag: v2.4.0
+    tag: v2.6.0
   env:
     BASE_URL: "https://rybbit.lag0.com.br"
     DISABLE_SIGNUP: "false"
