@@ -1,9 +1,9 @@
 dependencies:
 - name: cluster
   repository: https://cloudnative-pg.github.io/charts
-  version: 0.5.0
+  version: 0.6.0
 - name: clickhouse
   repository: https://helm.altinity.com/
   version: 0.3.9
-digest: sha256:133ce624c878cd7dc7121ca96116b64b75ea8ebc70ec392f0a1978f5fbc2a2a0
-generated: "2026-02-27T20:32:40.398466384-03:00"
+digest: sha256:4f3f7cb03cb30b594f7f3b128ae91095473646c81557532cc641cf204fe2d012
+generated: "2026-05-20T20:03:21.532407628Z"
