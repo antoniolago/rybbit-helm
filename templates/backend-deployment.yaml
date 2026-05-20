@@ -148,7 +148,7 @@ spec:
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-postgresql-app
+                  name: {{ .Release.Name }}-postgresql-superuser
                   key: user
             {{- end }}
             {{- /* Add secrets only if using built-in databases */ -}}
@@ -156,7 +156,7 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ printf "%s-postgresql-app" .Release.Name }}
+                  name: {{ printf "%s-postgresql-superuser" .Release.Name }}
                   key: password
             {{- end }}
             {{- /* Add auth secret only if not provided by user */ -}}
