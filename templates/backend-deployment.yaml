@@ -33,24 +33,44 @@ spec:
       initContainers:
         - name: wait-for-clickhouse
           image: busybox:1.35
+          env:
+            - name: CLICKHOUSE_HOST
+              {{- if hasKey .Values.backend.env "CLICKHOUSE_HOST" }}
+              value: {{ .Values.backend.env.CLICKHOUSE_HOST | quote }}
+              {{- else }}
+              value: {{ printf "http://clickhouse-%s-clickhouse.%s.svc.cluster.local:8123" .Release.Name .Release.Namespace | quote }}
+              {{- end }}
           command:
             - sh
             - -c
             - |
               echo "Waiting for ClickHouse to be ready..."
-              until wget -q --spider http://clickhouse-{{ .Release.Name }}-clickhouse.{{ .Release.Namespace }}.svc.cluster.local:8123/ping; do
+              until wget -q --spider "${CLICKHOUSE_HOST}/ping"; do
                 echo "ClickHouse is not ready yet..."
                 sleep 2
               done
               echo "ClickHouse is ready!"
         - name: wait-for-postgres
           image: docker.io/postgres:15-alpine
+          env:
+            - name: PGHOST
+              {{- if hasKey .Values.backend.env "POSTGRES_HOST" }}
+              value: {{ .Values.backend.env.POSTGRES_HOST | quote }}
+              {{- else }}
+              value: {{ printf "%s-postgresql-rw.%s.svc.cluster.local" .Release.Name .Release.Namespace | quote }}
+              {{- end }}
+            - name: PGPORT
+              {{- if hasKey .Values.backend.env "POSTGRES_PORT" }}
+              value: {{ .Values.backend.env.POSTGRES_PORT | quote }}
+              {{- else }}
+              value: "5432"
+              {{- end }}
           command:
             - sh
             - -c
             - |
               echo "Waiting for PostgreSQL to be ready..."
-              until pg_isready -h {{ .Release.Name }}-postgresql-rw.{{ .Release.Namespace }}.svc.cluster.local -p 5432; do
+              until pg_isready; do
                 echo "PostgreSQL is not ready yet..."
                 sleep 2
               done
@@ -101,10 +121,7 @@ spec:
             {{- end }}
             {{- if not (hasKey .Values.backend.env "CLICKHOUSE_USER") }}
             - name: CLICKHOUSE_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-clickhouse-credentials
-                  key: user
+              value: {{ .Values.clickhouse.auth.username | default "default" | quote }}
             {{- end }}
 
             {{- if not (hasKey .Values.backend.env "CLICKHOUSE_PASSWORD") }}
