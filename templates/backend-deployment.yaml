@@ -40,10 +40,18 @@ spec:
               {{- else }}
               value: {{ printf "http://clickhouse-%s-clickhouse.%s.svc.cluster.local:8123" .Release.Name .Release.Namespace | quote }}
               {{- end }}
+            {{- if hasKey .Values.backend.env "SKIP_CLICKHOUSE_WAIT" }}
+            - name: SKIP_CLICKHOUSE_WAIT
+              value: {{ .Values.backend.env.SKIP_CLICKHOUSE_WAIT | quote }}
+            {{- end }}
           command:
             - sh
             - -c
             - |
+              if [ "${SKIP_CLICKHOUSE_WAIT}" = "true" ]; then
+                echo "SKIP_CLICKHOUSE_WAIT=true; skipping ClickHouse readiness check."
+                exit 0
+              fi
               echo "Waiting for ClickHouse to be ready..."
               until wget -q --spider "${CLICKHOUSE_HOST}/ping"; do
                 echo "ClickHouse is not ready yet..."

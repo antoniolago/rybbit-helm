@@ -65,6 +65,9 @@ backend:
     # POSTGRES_PASSWORD: "use-secret-instead"
     # POSTGRES_PORT: 5432
 
+    ### USE to skip wget probe for externally managed ClickHouse requiring TLS
+    # SKIP_CLICKHOUSE_WAIT: "true"
+
   betterSecret:
     secretName: ""
     authKey: "better-auth-secret"
