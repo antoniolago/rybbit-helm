@@ -1,0 +1,89 @@
+{{- if .Values.valkey.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-valkey
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rybbit.labels" . | nindent 4 }}
+    app.kubernetes.io/component: valkey
+spec:
+  serviceName: {{ .Release.Name }}-valkey
+  replicas: {{ .Values.valkey.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "rybbit.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: valkey
+  template:
+    metadata:
+      labels:
+        {{- include "rybbit.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: valkey
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- with .Values.global.podSecurityContext }}
+        {{- if .enabled }}
+        fsGroup: {{ .fsGroup }}
+        {{- end }}
+        {{- end }}
+      containers:
+        - name: valkey
+          image: "{{ .Values.valkey.image.repository }}:{{ .Values.valkey.image.tag }}"
+          imagePullPolicy: {{ .Values.valkey.image.pullPolicy }}
+          securityContext:
+            {{- with .Values.global.containerSecurityContext }}
+            {{- if .enabled }}
+            runAsUser: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: {{ .allowPrivilegeEscalation }}
+            {{- end }}
+            {{- end }}
+          ports:
+            - name: valkey
+              containerPort: 6379
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.valkey.resources | nindent 12 }}
+          command:
+            - valkey-server
+          args:
+            - --requirepass
+            - "$(VALKEY_PASSWORD)"
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            - --maxmemory-policy
+            - noeviction
+            - --save
+            - ""
+          env:
+            - name: VALKEY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-valkey
+                  key: valkey-password
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  {{- if .Values.valkey.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "rybbit.labels" . | nindent 10 }}
+          app.kubernetes.io/component: valkey
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.valkey.persistence.storageClass }}
+        storageClassName: {{ .Values.valkey.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.valkey.persistence.size }}
+  {{- end }}
+{{- end }}

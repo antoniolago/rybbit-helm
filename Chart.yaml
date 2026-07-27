@@ -2,7 +2,7 @@ apiVersion: v2
 name: rybbit
 description: A Helm chart for Rybbit self-hosted analytics
 type: application
-version: 0.6.3-rc2
+version: 0.7.0-rc1
 appVersion: "2.4.0"
 kubeVersion: ">=1.19.0-0"
 maintainers:
@@ -31,9 +31,3 @@ dependencies:
   condition: clickhouse.enabled
   tags:
   - clickhouse
-- name: valkey
-  version: "6.2.4"
-  repository: https://charts.bitnami.com/bitnami
-  condition: valkey.enabled
-  tags:
-  - valkey

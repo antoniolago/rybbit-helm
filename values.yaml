@@ -169,32 +169,29 @@ postgresql:
     size: 10Gi
     storageClass: ""
 
-# Valkey configuration (Bitnami)
+# Valkey (in-chart StatefulSet — no external chart dependency)
 # Provides session tracking and BullMQ queue persistence for the backend.
 # Settings mirror the official rybbit docker-compose.yml.
-# See: https://github.com/bitnami/charts/tree/main/bitnami/valkey
 valkey:
   enabled: true
-  architecture: standalone
+  image:
+    repository: docker.io/valkey/valkey
+    tag: "9.1.1-alpine"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
   auth:
-    enabled: true
     password: ""
-  primary:
-    replicaCount: 1
-    extraFlags:
-      - "--maxmemory-policy noeviction"
-      - "--appendfsync everysec"
-    persistence:
-      enabled: true
-      size: 8Gi
-      storageClass: ""
-    resources:
-      requests:
-        cpu: 10m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 10m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 # ClickHouse configuration (Altinity Operator)
 # See: https://github.com/Altinity/helm-charts/blob/main/charts/clickhouse/values.yaml

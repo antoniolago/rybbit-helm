@@ -32,13 +32,14 @@ spec:
         {{- end }}
       initContainers:
         - name: wait-for-valkey
-          image: bitnami/valkey:latest
+          image: "{{ .Values.valkey.image.repository }}:{{ .Values.valkey.image.tag }}"
+          imagePullPolicy: {{ .Values.valkey.image.pullPolicy }}
           env:
             - name: VALKEY_HOST
               {{- if hasKey .Values.backend.env "REDIS_HOST" }}
               value: {{ .Values.backend.env.REDIS_HOST | quote }}
               {{- else if .Values.valkey.enabled }}
-              value: {{ printf "%s-valkey-primary.%s.svc.cluster.local" .Release.Name .Release.Namespace | quote }}
+              value: {{ printf "%s-valkey.%s.svc.cluster.local" .Release.Name .Release.Namespace | quote }}
               {{- else }}
               value: "localhost"
               {{- end }}
@@ -227,7 +228,7 @@ spec:
             {{- if not (hasKey .Values.backend.env "REDIS_HOST") }}
             - name: REDIS_HOST
               {{- if .Values.valkey.enabled }}
-              value: {{ printf "%s-valkey-primary.%s.svc.cluster.local" .Release.Name .Release.Namespace | quote }}
+              value: {{ printf "%s-valkey.%s.svc.cluster.local" .Release.Name .Release.Namespace | quote }}
               {{- else }}
               value: "localhost"
               {{- end }}

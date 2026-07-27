@@ -5,8 +5,5 @@ dependencies:
 - name: clickhouse
   repository: https://helm.altinity.com/
   version: 0.3.9
-- name: valkey
-  repository: https://charts.bitnami.com/bitnami
-  version: 6.2.4
-digest: sha256:26b283ab343035cac0e55bd7b34fd33aca05277ef2ad55ba7800e2f1124edeed
-generated: "2026-07-27T14:57:43.525890873-03:00"
+digest: sha256:4f3f7cb03cb30b594f7f3b128ae91095473646c81557532cc641cf204fe2d012
+generated: "2026-07-27T16:29:55.606364797-03:00"
