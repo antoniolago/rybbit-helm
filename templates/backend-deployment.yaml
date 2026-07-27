@@ -32,7 +32,7 @@ spec:
         {{- end }}
       initContainers:
         - name: wait-for-valkey
-          image: bitnami/valkey:9.1.1
+          image: bitnami/valkey:latest
           env:
             - name: VALKEY_HOST
               {{- if hasKey .Values.backend.env "REDIS_HOST" }}
