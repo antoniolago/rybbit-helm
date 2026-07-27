@@ -25,23 +25,30 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       securityContext:
-        {{- with .Values.global.podSecurityContext }}
-        {{- if .enabled }}
-        fsGroup: {{ .fsGroup }}
-        {{- end }}
-        {{- end }}
+        fsGroup: 1001
+      initContainers:
+        - name: fix-data-permissions
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - chown -R 1001:1001 /data
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: /data
       containers:
         - name: valkey
           image: "{{ .Values.valkey.image.repository }}:{{ .Values.valkey.image.tag }}"
           imagePullPolicy: {{ .Values.valkey.image.pullPolicy }}
           securityContext:
-            {{- with .Values.global.containerSecurityContext }}
-            {{- if .enabled }}
             runAsUser: 1001
             runAsNonRoot: true
-            allowPrivilegeEscalation: {{ .allowPrivilegeEscalation }}
-            {{- end }}
-            {{- end }}
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: valkey
               containerPort: 6379
@@ -61,6 +68,8 @@ spec:
             - noeviction
             - --save
             - ""
+            - --dir
+            - /data
           env:
             - name: VALKEY_PASSWORD
               valueFrom:
