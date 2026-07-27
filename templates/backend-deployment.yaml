@@ -31,6 +31,44 @@ spec:
         {{- end }}
         {{- end }}
       initContainers:
+        - name: wait-for-valkey
+          image: busybox:1.35
+          env:
+            - name: VALKEY_HOST
+              {{- if hasKey .Values.backend.env "REDIS_HOST" }}
+              value: {{ .Values.backend.env.REDIS_HOST | quote }}
+              {{- else if .Values.valkey.enabled }}
+              value: {{ printf "%s-valkey-primary.%s.svc.cluster.local" .Release.Name .Release.Namespace | quote }}
+              {{- else }}
+              value: "localhost"
+              {{- end }}
+            - name: VALKEY_PORT
+              {{- if hasKey .Values.backend.env "REDIS_PORT" }}
+              value: {{ .Values.backend.env.REDIS_PORT | quote }}
+              {{- else }}
+              value: "6379"
+              {{- end }}
+            - name: VALKEY_PASSWORD
+              {{- if hasKey .Values.backend.env "REDIS_PASSWORD" }}
+              value: {{ .Values.backend.env.REDIS_PASSWORD | quote }}
+              {{- else if .Values.valkey.enabled }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-valkey" .Release.Name }}
+                  key: valkey-password
+              {{- else }}
+              value: ""
+              {{- end }}
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Valkey to be ready..."
+              until valkey-cli -h "${VALKEY_HOST}" -p "${VALKEY_PORT}" -a "${VALKEY_PASSWORD}" --no-auth-warning ping | grep -q PONG; do
+                echo "Valkey is not ready yet..."
+                sleep 2
+              done
+              echo "Valkey is ready!"
         - name: wait-for-clickhouse
           image: busybox:1.35
           env:
@@ -184,6 +222,32 @@ spec:
                   name: {{ printf "%s-postgresql-superuser" .Release.Name }}
                   key: password
             {{- end }}
+
+            {{- /* Valkey/Redis configuration */ -}}
+            {{- if not (hasKey .Values.backend.env "REDIS_HOST") }}
+            - name: REDIS_HOST
+              {{- if .Values.valkey.enabled }}
+              value: {{ printf "%s-valkey-primary.%s.svc.cluster.local" .Release.Name .Release.Namespace | quote }}
+              {{- else }}
+              value: "localhost"
+              {{- end }}
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "REDIS_PORT") }}
+            - name: REDIS_PORT
+              value: "6379"
+            {{- end }}
+            {{- if not (hasKey .Values.backend.env "REDIS_PASSWORD") }}
+            - name: REDIS_PASSWORD
+              {{- if .Values.valkey.enabled }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-valkey" .Release.Name }}
+                  key: valkey-password
+              {{- else }}
+              value: ""
+              {{- end }}
+            {{- end }}
+
             {{- /* Add auth secret only if not provided by user */ -}}
             {{- if not (hasKey .Values.backend.env "BETTER_AUTH_SECRET") }}
             {{- if .Values.backend.betterSecret.secretName }}
