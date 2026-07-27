@@ -118,9 +118,7 @@ jobs:
             --set clickhouse.keeper.replicaCount=1 \
             --set backend.replicaCount=1 \
             --set client.replicaCount=1 \
-            --set global.podDisruptionBudget.enabled=false \
-            --wait \
-            --timeout 600s
+            --set global.podDisruptionBudget.enabled=false
 
       - name: Wait for pods
         run: |
