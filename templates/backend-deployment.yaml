@@ -32,8 +32,8 @@ spec:
         {{- end }}
       initContainers:
         - name: wait-for-valkey
-          image: "{{ .Values.valkey.image.repository }}:{{ .Values.valkey.image.tag }}"
-          imagePullPolicy: {{ .Values.valkey.image.pullPolicy }}
+          image: docker.io/valkey/valkey:9.1.1-alpine
+          imagePullPolicy: IfNotPresent
           env:
             - name: VALKEY_HOST
               {{- if hasKey .Values.backend.env "REDIS_HOST" }}
@@ -55,8 +55,8 @@ spec:
               {{- else if .Values.valkey.enabled }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ printf "%s-valkey" .Release.Name }}
-                  key: valkey-password
+                  name: {{ printf "%s-valkey-auth" .Release.Name }}
+                  key: default-password
               {{- else }}
               value: ""
               {{- end }}
@@ -242,8 +242,8 @@ spec:
               {{- if .Values.valkey.enabled }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ printf "%s-valkey" .Release.Name }}
-                  key: valkey-password
+                  name: {{ printf "%s-valkey-auth" .Release.Name }}
+                  key: default-password
               {{- else }}
               value: ""
               {{- end }}

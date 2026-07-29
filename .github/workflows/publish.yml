@@ -31,6 +31,7 @@ jobs:
         run: |
           helm repo add cnpg https://cloudnative-pg.github.io/charts
           helm repo add altinity https://helm.altinity.com/
+          helm repo add valkey-io https://valkey-io.github.io/valkey-helm/
           helm repo update
 
       - name: Run Helm lint

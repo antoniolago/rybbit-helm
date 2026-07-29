@@ -169,22 +169,28 @@ postgresql:
     size: 10Gi
     storageClass: ""
 
-# Valkey (in-chart StatefulSet — no external chart dependency)
+# Valkey (official valkey-io/valkey-helm subchart)
 # Provides session tracking and BullMQ queue persistence for the backend.
 # Settings mirror the official rybbit docker-compose.yml.
+# See: https://github.com/valkey-io/valkey-helm
 valkey:
   enabled: true
-  image:
-    repository: docker.io/valkey/valkey
-    tag: "9.1.1-alpine"
-    pullPolicy: IfNotPresent
-  replicaCount: 1
   auth:
-    password: ""
-  persistence:
     enabled: true
-    size: 8Gi
-    storageClass: ""
+    aclUsers:
+      default:
+        permissions: "~* &* +@all"
+        password: "rybbit-valkey-changeme"
+  dataStorage:
+    enabled: true
+    requestedSize: 8Gi
+    className: ""
+  valkeyConfig: |
+    appendonly yes
+    appendfsync everysec
+    maxmemory-policy noeviction
+    save ""
+    dir /data
   resources:
     requests:
       cpu: 10m
