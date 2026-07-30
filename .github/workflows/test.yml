@@ -119,11 +119,19 @@ jobs:
 
       - name: Wait for ClickHouse CRDs
         run: |
-          echo "Waiting for ClickHouse CRDs to be established..."
-          kubectl wait --for=condition=established \
-            crd/clickhouseinstallations.clickhouse.altinity.com \
-            crd/clickhousekeeperinstallations.clickhouse-keeper.altinity.com \
-            --timeout=60s
+          echo "Waiting for ClickHouse CRDs to be registered..."
+          for i in $(seq 1 12); do
+            if kubectl api-resources 2>/dev/null | grep -q clickhouseinstallations; then
+              echo "✓ ClickHouse CRDs registered"
+              kubectl api-resources | grep clickhouse
+              exit 0
+            fi
+            echo "Attempt $i/12: CRDs not yet registered, waiting..."
+            sleep 5
+          done
+          echo "ERROR: ClickHouse CRDs not registered after 60s"
+          kubectl api-resources 2>/dev/null || true
+          exit 1
 
       - name: Update Helm dependencies
         run: helm dependency update
