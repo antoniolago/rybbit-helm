@@ -2,7 +2,7 @@ apiVersion: v2
 name: rybbit
 description: A Helm chart for Rybbit self-hosted analytics
 type: application
-version: 0.8.0-rc1
+version: 0.8.0-rc2
 appVersion: "2.4.0"
 kubeVersion: ">=1.19.0-0"
 maintainers:
@@ -20,13 +20,13 @@ sources:
 dependencies:
 - name: cluster
   alias: postgresql
-  version: "0.6.0"
+  version: "0.8.1"
   repository: https://cloudnative-pg.github.io/charts
   condition: postgresql.enabled
   tags:
   - postgresql
 - name: clickhouse
-  version: "0.3.9"
+  version: "0.3.13"
   repository: https://helm.altinity.com/
   condition: clickhouse.enabled
   tags:
