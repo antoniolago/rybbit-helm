@@ -1,12 +1,6 @@
 dependencies:
-- name: cluster
-  repository: https://cloudnative-pg.github.io/charts
-  version: 0.8.1
-- name: clickhouse
-  repository: https://helm.altinity.com/
-  version: 0.3.13
 - name: valkey
   repository: https://valkey-io.github.io/valkey-helm/
   version: 0.11.0
-digest: sha256:972aa9d978eced801caedd2a55ceb8883f0364a08e06586fcc6e6fa8300b8f3e
-generated: "2026-07-30T16:08:42.639076871-03:00"
+digest: sha256:1e8876a0950bc87351af5fe6de9cf0c2aad7564f85da3e74876604c5478ad264
+generated: "2026-07-30T17:37:09.244172937-03:00"

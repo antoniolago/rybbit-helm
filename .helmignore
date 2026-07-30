@@ -1,0 +1,8 @@
+# Helm ignore file — only exclude non-chart files
+# The charts/ directory is managed by `helm dependency update` — do NOT exclude it.
+.git/
+.gitignore
+.github/
+scripts/
+test/
+*.md

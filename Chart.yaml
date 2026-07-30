@@ -18,19 +18,6 @@ sources:
 - https://github.com/antoniolago/rybbit-helm
 
 dependencies:
-- name: cluster
-  alias: postgresql
-  version: "0.8.1"
-  repository: https://cloudnative-pg.github.io/charts
-  condition: postgresql.enabled
-  tags:
-  - postgresql
-- name: clickhouse
-  version: "0.3.13"
-  repository: https://helm.altinity.com/
-  condition: clickhouse.enabled
-  tags:
-  - clickhouse
 - name: valkey
   version: "0.11.0"
   repository: https://valkey-io.github.io/valkey-helm/

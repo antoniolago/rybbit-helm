@@ -106,6 +106,17 @@ jobs:
             --wait \
             --timeout 300s
 
+      - name: Install ClickHouse Operator
+        run: |
+          helm repo add altinity https://helm.altinity.com/
+          helm repo update
+          helm install clickhouse-operator altinity/altinity-clickhouse-operator \
+            --namespace clickhouse-system \
+            --create-namespace \
+            --set 'watchNamespaces[0]=.*' \
+            --wait \
+            --timeout 300s
+
       - name: Update Helm dependencies
         run: helm dependency update
 

@@ -1,0 +1,35 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.postgresql.name | default "postgresql" }}
+  labels:
+    {{- include "rybbit.labels" . | nindent 4 }}
+    app.kubernetes.io/part-of: cloudnative-pg
+spec:
+  instances: {{ .Values.postgresql.cluster.instances | default 1 }}
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+  imagePullPolicy: IfNotPresent
+  postgresUID: 26
+  postgresGID: 26
+  storage:
+    size: {{ .Values.postgresql.storage.size | default "10Gi" }}
+    {{- with .Values.postgresql.storage.storageClass }}
+    storageClass: {{ . | quote }}
+    {{- end }}
+  affinity:
+    topologyKey: topology.kubernetes.io/zone
+  primaryUpdateMethod: switchover
+  primaryUpdateStrategy: unsupervised
+  stopDelay: 1800
+  logLevel: info
+  enableSuperuserAccess: true
+  enablePDB: true
+  postgresql:
+  monitoring:
+    disableDefaultQueries: false
+    tls:
+      enabled: false
+  bootstrap:
+    initdb:
+{{- end }}
