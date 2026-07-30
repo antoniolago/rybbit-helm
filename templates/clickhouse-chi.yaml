@@ -56,8 +56,7 @@ spec:
               port: 9000
               targetPort: 9000
           selector:
-            app.kubernetes.io/name: clickhouse
-            app.kubernetes.io/instance: {{ .Release.Name }}
+            clickhouse.altinity.com/chi: {{ .Release.Name }}-clickhouse
     volumeClaimTemplates:
       - name: {{ .Release.Name }}-clickhouse-data
         reclaimPolicy: Retain
