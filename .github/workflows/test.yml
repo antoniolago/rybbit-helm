@@ -194,14 +194,43 @@ jobs:
         run: |
           echo "=== Cleaning up ==="
           
+          # Delete CNPG clusters first — they have finalizers that block namespace deletion
+          echo "Deleting CNPG Cluster resources..."
+          kubectl delete clusters.postgresql.cnpg.io --all -n ${{ env.NAMESPACE }} --ignore-not-found=true --force --grace-period=0 || true
+          
+          # Remove finalizers from stuck CNPG clusters
+          for cluster in $(kubectl get clusters.postgresql.cnpg.io -n ${{ env.NAMESPACE }} -o name 2>/dev/null || true); do
+            kubectl patch $cluster -n ${{ env.NAMESPACE }} --type=merge -p '{"metadata":{"finalizers":[]}}' 2>/dev/null || true
+          done
+          
           # Manually delete ClickHouse resources that might hang helm uninstall
           echo "Deleting ClickHouseInstallation objects..."
-          kubectl delete clickhouseinstallation --all --all-namespaces --ignore-not-found=true --force --grace-period=0 || true
-          kubectl delete clickhousekeeperinstallation --all --all-namespaces --ignore-not-found=true --force --grace-period=0 || true
+          kubectl delete clickhouseinstallation --all -n ${{ env.NAMESPACE }} --ignore-not-found=true --force --grace-period=0 || true
+          kubectl delete clickhousekeeperinstallation --all -n ${{ env.NAMESPACE }} --ignore-not-found=true --force --grace-period=0 || true
+          
+          # Remove finalizers from stuck ClickHouse resources
+          for chk in $(kubectl get clickhouseinstallation -n ${{ env.NAMESPACE }} -o name 2>/dev/null || true); do
+            kubectl patch $chk -n ${{ env.NAMESPACE }} --type=merge -p '{"metadata":{"finalizers":[]}}' 2>/dev/null || true
+          done
+          for chk in $(kubectl get clickhousekeeperinstallation -n ${{ env.NAMESPACE }} -o name 2>/dev/null || true); do
+            kubectl patch $chk -n ${{ env.NAMESPACE }} --type=merge -p '{"metadata":{"finalizers":[]}}' 2>/dev/null || true
+          done
           
           # Delete the helm release
           helm uninstall ${{ env.RELEASE_NAME }} -n ${{ env.NAMESPACE }} || true
           
+          # Delete PVCs that might block namespace deletion
+          kubectl delete pvc --all -n ${{ env.NAMESPACE }} --ignore-not-found=true --force --grace-period=0 || true
+          
           # Delete namespace with force to avoid hanging
-          kubectl delete namespace ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 || true
+          kubectl delete namespace ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 --timeout=30s || true
+          
+          # If namespace still exists, strip finalizers
+          if kubectl get namespace ${{ env.NAMESPACE }} &>/dev/null; then
+            echo "Namespace stuck, removing finalizers..."
+            kubectl get namespace ${{ env.NAMESPACE }} -o json | \
+              jq '.spec.finalizers = []' | \
+              kubectl replace --raw "/api/v1/namespaces/${{ env.NAMESPACE }}/finalize" -f - || true
+          fi
+          
           echo "✓ Cleanup completed"
