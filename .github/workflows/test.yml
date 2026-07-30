@@ -117,6 +117,14 @@ jobs:
             --wait \
             --timeout 300s
 
+      - name: Wait for ClickHouse CRDs
+        run: |
+          echo "Waiting for ClickHouse CRDs to be established..."
+          kubectl wait --for=condition=established \
+            crd/clickhouseinstallations.clickhouse.altinity.com \
+            crd/clickhousekeeperinstallations.clickhouse-keeper.altinity.com \
+            --timeout=60s
+
       - name: Update Helm dependencies
         run: helm dependency update
 
