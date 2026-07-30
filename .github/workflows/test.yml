@@ -188,24 +188,3 @@ jobs:
           
           echo "=== Pod descriptions ==="
           kubectl describe pods -n ${{ env.NAMESPACE }}
-
-      - name: Cleanup
-        if: always()
-        run: |
-          echo "=== Cleanup ==="
-          
-          # Uninstall helm with short timeout — don't wait for hooks
-          helm uninstall ${{ env.RELEASE_NAME }} -n ${{ env.NAMESPACE }} --timeout 10s || true
-          
-          # Delete namespace — short timeout, no waiting for graceful teardown
-          kubectl delete namespace ${{ env.NAMESPACE }} --ignore-not-found --timeout 10s || true
-          
-          # If namespace still exists, nuke finalizers so it dies immediately
-          if kubectl get namespace ${{ env.NAMESPACE }} &>/dev/null; then
-            echo "Namespace stuck, stripping finalizers..."
-            kubectl get namespace ${{ env.NAMESPACE }} -o json | \
-              jq '.spec.finalizers = []' | \
-              kubectl replace --raw "/api/v1/namespaces/${{ env.NAMESPACE }}/finalize" -f - || true
-          fi
-          
-          echo "✓ Cleanup done"
