@@ -104,13 +104,6 @@ helm install clickhouse-operator altinity/altinity-clickhouse-operator \
   --set 'watchNamespaces[0]=.*'
 ```
 
-> **Why the operator is not bundled anymore:** the operator was previously installed
-> as a subchart, but that is out of scope for the rybbit chart — the operator manages
-> ClickHouse clusters cluster-wide, not just this release — and it made the chart
-> package unreasonably heavy (its CRDs pushed the rendered manifest past Kubernetes'
-> 1MB Secret size limit, breaking `helm install`). Splitting it out keeps the chart
-> lean (~35KB) and lets you manage the operator's lifecycle independently.
-
 For detailed configuration options, refer to:
 [Altinity Clickhouse Parameters](https://github.com/Altinity/helm-charts/blob/main/charts/clickhouse/values.yaml)
 
