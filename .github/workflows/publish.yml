@@ -31,6 +31,7 @@ jobs:
         run: |
           helm repo add cnpg https://cloudnative-pg.github.io/charts
           helm repo add altinity https://helm.altinity.com/
+          helm repo add valkey-io https://valkey-io.github.io/valkey-helm/
           helm repo update
 
       - name: Run Helm lint
@@ -101,6 +102,33 @@ jobs:
             --wait \
             --timeout 300s
 
+      - name: Install ClickHouse Operator
+        run: |
+          helm repo add altinity https://helm.altinity.com/
+          helm repo update
+          helm install clickhouse-operator altinity/altinity-clickhouse-operator \
+            --namespace clickhouse-system \
+            --create-namespace \
+            --set 'watchNamespaces[0]=.*' \
+            --wait \
+            --timeout 300s
+
+      - name: Wait for ClickHouse CRDs
+        run: |
+          echo "Waiting for ClickHouse CRDs to be registered..."
+          for i in $(seq 1 12); do
+            if kubectl api-resources 2>/dev/null | grep -q clickhouseinstallations; then
+              echo "✓ ClickHouse CRDs registered"
+              kubectl api-resources | grep clickhouse
+              exit 0
+            fi
+            echo "Attempt $i/12: CRDs not yet registered, waiting..."
+            sleep 5
+          done
+          echo "ERROR: ClickHouse CRDs not registered after 60s"
+          kubectl api-resources 2>/dev/null || true
+          exit 1
+
       - name: Update Helm dependencies
         run: helm dependency update
 
@@ -162,8 +190,30 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          helm uninstall ${{ env.RELEASE_NAME }} -n ${{ env.NAMESPACE }} || true
-          kubectl delete namespace ${{ env.NAMESPACE }} --ignore-not-found || true
+          echo "=== Cleanup ==="
+          
+          # Uninstall helm release
+          helm uninstall ${{ env.RELEASE_NAME }} -n ${{ env.NAMESPACE }} --timeout 30s || true
+          
+          # Delete ClickHouse CRs that might have operator finalizers
+          kubectl delete clickhouseinstallation --all -n ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 --timeout=10s || true
+          kubectl delete clickhousekeeperinstallation --all -n ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 --timeout=10s || true
+          
+          # Delete CNPG clusters
+          kubectl delete clusters.postgresql.cnpg.io --all -n ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 --timeout=10s || true
+          
+          # Delete namespace
+          kubectl delete namespace ${{ env.NAMESPACE }} --ignore-not-found --timeout 15s || true
+          
+          # Nuclear option: strip namespace finalizers if still stuck
+          if kubectl get namespace ${{ env.NAMESPACE }} &>/dev/null; then
+            echo "Namespace stuck, stripping finalizers..."
+            kubectl get namespace ${{ env.NAMESPACE }} -o json | \
+              jq '.spec.finalizers = []' | \
+              kubectl replace --raw "/api/v1/namespaces/${{ env.NAMESPACE }}/finalize" -f - || true
+          fi
+          
+          echo "✓ Cleanup done"
 
   publish:
     name: Publish to Registries
@@ -190,6 +240,7 @@ jobs:
     - name: Update dependencies
       run: |
         echo "=== Updating dependencies ==="
+        helm repo add valkey-io https://valkey-io.github.io/valkey-helm/
         helm dependency update .
         echo "✓ Dependencies updated successfully"
 

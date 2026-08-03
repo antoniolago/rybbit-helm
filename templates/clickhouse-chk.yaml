@@ -1,0 +1,70 @@
+{{- if .Values.clickhouse.enabled }}
+{{- $keeper := .Values.clickhouse.keeper }}
+apiVersion: "clickhouse-keeper.altinity.com/v1"
+kind: "ClickHouseKeeperInstallation"
+metadata:
+  name: {{ .Release.Name }}-clickhouse
+  labels:
+    {{- include "rybbit.labels" . | nindent 4 }}
+spec:
+  configuration:
+    clusters:
+      - name: {{ .Release.Name | quote }}
+        layout:
+          replicas:
+            - name: "keeper-0"
+              templates:
+                podTemplate: "keeper-0"
+                dataVolumeClaimTemplate: "keeper-0"
+                replicaServiceTemplate: "keeper-0"
+  defaults:
+    storageManagement:
+      provisioner: Operator
+      reclaimPolicy: Retain
+  templates:
+    serviceTemplates:
+      - name: "keeper-0"
+        generateName: "keeper-{{ .Release.Name }}-clickhouse-0"
+        spec:
+          type: ClusterIP
+          publishNotReadyAddresses: true
+          ports:
+            - name: zk
+              port: 2181
+              targetPort: 2181
+            - name: raft
+              port: 9444
+              targetPort: 9444
+    volumeClaimTemplates:
+      - name: "keeper-0"
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ $keeper.localStorage.size | default "8Gi" | quote }}
+          {{- with $keeper.localStorage.storageClass }}
+          storageClassName: {{ . | quote }}
+          {{- end }}
+    podTemplates:
+      - name: "keeper-0"
+        generateName: "keeper-{{ .Release.Name }}-clickhouse-0"
+        spec:
+          topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                clickhouse-keeper.altinity.com/cluster: {{ .Release.Name | quote }}
+          containers:
+            - name: clickhouse-keeper
+              image: {{ $keeper.image | default "docker.io/altinity/clickhouse-keeper:25.3.6.10034.altinitystable" | quote }}
+              resources:
+                requests:
+                  cpu: {{ $keeper.resources.cpuRequestsMs | default 100 }}m
+                  memory: {{ $keeper.resources.memoryRequestsMiB | default 128 }}Mi
+                limits:
+                  cpu: {{ $keeper.resources.cpuLimitsMs | default 500 }}m
+                  memory: {{ $keeper.resources.memoryLimitsMiB | default 1 }}Gi
+{{- end }}

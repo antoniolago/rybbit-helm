@@ -169,36 +169,58 @@ postgresql:
     size: 10Gi
     storageClass: ""
 
+# Valkey (official valkey-io/valkey-helm subchart)
+# Provides session tracking and BullMQ queue persistence for the backend.
+# Settings mirror the official rybbit docker-compose.yml.
+# See: https://github.com/valkey-io/valkey-helm
+valkey:
+  enabled: true
+  auth:
+    enabled: true
+    aclUsers:
+      default:
+        permissions: "~* &* +@all"
+        password: "rybbit-valkey-changeme"
+  dataStorage:
+    enabled: true
+    requestedSize: 8Gi
+    className: ""
+  valkeyConfig: |
+    appendonly yes
+    appendfsync everysec
+    maxmemory-policy noeviction
+    save ""
+    dir /data
+  resources:
+    requests:
+      cpu: 10m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
 # ClickHouse configuration (Altinity Operator)
-# See: https://github.com/Altinity/helm-charts/blob/main/charts/clickhouse/values.yaml
+# 
+# IMPORTANT: The Altinity ClickHouse Operator must be installed separately before
+# deploying this chart. Install it with:
+#   helm repo add altinity https://helm.altinity.com/
+#   helm install clickhouse-operator altinity/altinity-clickhouse-operator \
+#     --namespace clickhouse-system --create-namespace \
+#     --set 'watchNamespaces[0]=.*'
+#
+# The operator provides the ClickHouseInstallation and ClickHouseKeeperInstallation
+# CRDs. This chart creates the CR instances, not the operator itself.
+# See: https://github.com/Altinity/clickhouse-operator
 clickhouse:
   enabled: true
-  operator:
-    enabled: true
-    operator:
-      image:
-        # registry: "docker.io"
-        repository: docker.io/altinity/clickhouse-operator
-    metrics:
-      enabled: true
-      image:
-        repository: "docker.io/altinity/metrics-exporter"
-    crdHook:
-      # crdHook.enabled -- enable automatic CRD installation/update via pre-install/pre-upgrade hooks
-      # when disabled, CRDs must be installed manually using kubectl apply
-      enabled: true
-      image:
-        # crdHook.image.repository -- image repository for CRD installation job
-        repository: docker.io/alpine/k8s
-        tag: "1.32.12"
   clickhouse:
     replicasCount: 1
     shardsCount: 1
     image:
       repository: docker.io/altinity/clickhouse-server
+      tag: "25.3.6.10034.altinitystable"
     defaultUser:
       # Default password - should be overridden in production
-      # The chart will store this in rybbit-clickhouse-credentials secret
       password: "changeme"
       password_secret_name: ""
       # Allow access from pod networks (private RFC1918 ranges)
@@ -218,7 +240,7 @@ clickhouse:
         cpu: "1000m"
   keeper:
     enabled: true
-    image: docker.io/altinity/clickhouse-keeper
+    image: docker.io/altinity/clickhouse-keeper:25.3.6.10034.altinitystable
     replicaCount: 1
     localStorage:
       size: 8Gi

@@ -1,0 +1,100 @@
+{{- if .Values.clickhouse.enabled }}
+apiVersion: "clickhouse.altinity.com/v1"
+kind: ClickHouseInstallation
+metadata:
+  name: {{ .Release.Name }}-clickhouse
+  labels:
+    {{- include "rybbit.labels" . | nindent 4 }}
+spec:
+  defaults:
+    templates:
+      serviceTemplate: {{ .Release.Name }}-clickhouse-service
+      podTemplate: {{ .Release.Name }}-clickhouse-pod
+      dataVolumeClaimTemplate: {{ .Release.Name }}-clickhouse-data
+  templates:
+    podTemplates:
+      - name: {{ .Release.Name }}-clickhouse-pod
+        metadata:
+          labels:
+            {{- include "rybbit.labels" . | nindent 12 }}
+        podDistribution: []
+        spec:
+          securityContext: {}
+          containers:
+            - name: clickhouse
+              securityContext: {}
+              image: "{{ .Values.clickhouse.clickhouse.image.repository }}:{{ .Values.clickhouse.clickhouse.image.tag | default "25.3.6.10034.altinitystable" }}"
+              imagePullPolicy: IfNotPresent
+              ports:
+                - name: http
+                  containerPort: 8123
+                - name: client
+                  containerPort: 9000
+                - name: interserver
+                  containerPort: 9009
+              resources:
+                {{- with .Values.clickhouse.clickhouse.resources }}
+                limits:
+                  cpu: {{ .limits.cpu | default "1000m" | quote }}
+                  memory: {{ .limits.memory | default "2Gi" | quote }}
+                requests:
+                  cpu: {{ .requests.cpu | default "100m" | quote }}
+                  memory: {{ .requests.memory | default "600Mi" | quote }}
+                {{- end }}
+    serviceTemplates:
+      - name: {{ .Release.Name }}-clickhouse-service
+        metadata:
+          labels:
+            {{- include "rybbit.labels" . | nindent 12 }}
+        spec:
+          type: ClusterIP
+          ports:
+            - name: http
+              port: 8123
+              targetPort: 8123
+            - name: tcp
+              port: 9000
+              targetPort: 9000
+          selector:
+            clickhouse.altinity.com/chi: {{ .Release.Name }}-clickhouse
+    volumeClaimTemplates:
+      - name: {{ .Release.Name }}-clickhouse-data
+        reclaimPolicy: Retain
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ .Values.clickhouse.clickhouse.persistence.size | default "20Gi" }}
+          {{- with .Values.clickhouse.clickhouse.persistence.storageClass }}
+          storageClassName: {{ . | quote }}
+          {{- end }}
+  configuration:
+    users:
+      default/networks/ip: "0.0.0.0/0"
+      default/access_management: 1
+      default/named_collection_control: 1
+      default/show_named_collections: 1
+      default/show_named_collections_secrets: 1
+      default/password:
+        valueFrom:
+          secretKeyRef:
+            name: {{ .Release.Name }}-clickhouse-credentials
+            key: password
+    clusters:
+      - name: {{ .Release.Name }}
+        layout:
+          shardsCount: {{ .Values.clickhouse.clickhouse.shardsCount | default 1 }}
+          replicasCount: {{ .Values.clickhouse.clickhouse.replicasCount | default 1 }}
+    zookeeper:
+      nodes:
+        - host: keeper-{{ .Release.Name }}-clickhouse
+          port: 2181
+    files:
+      config.d/extra_config.xml: |
+        <clickhouse>
+        </clickhouse>
+      users.d/extra_users.xml: |
+        <clickhouse>
+        </clickhouse>
+{{- end }}

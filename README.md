@@ -76,16 +76,35 @@ ingress:
 
 ## External Dependencies
 
-This chart uses the following external dependencies:
+This chart has the following external dependencies:
 
 ### PostgreSQL (CloudNativePG)
 
-The chart uses CloudNativePG chart as a dependency. For detailed configuration options, refer to:
-[CloudNativePG Parameters](https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml)
+The chart creates a CloudNativePG `Cluster` resource directly (inlined template).
+The **CloudNativePG operator must be installed** in the cluster for it to work:
 
-### ClickHouse
+```bash
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm install cnpg cnpg/cloudnative-pg \
+  --namespace cnpg-system \
+  --create-namespace
+```
 
-The chart uses Altinity Operator for ClickHouse deployment. For detailed configuration options, refer to:
+### ClickHouse (Altinity Operator)
+
+The chart creates `ClickHouseInstallation` and `ClickHouseKeeperInstallation` resources
+directly (inlined templates). The **Altinity ClickHouse Operator must be installed**
+in the cluster for them to work:
+
+```bash
+helm repo add altinity https://helm.altinity.com/
+helm install clickhouse-operator altinity/altinity-clickhouse-operator \
+  --namespace clickhouse-system \
+  --create-namespace \
+  --set 'watchNamespaces[0]=.*'
+```
+
+For detailed configuration options, refer to:
 [Altinity Clickhouse Parameters](https://github.com/Altinity/helm-charts/blob/main/charts/clickhouse/values.yaml)
 
 ## Configuration
