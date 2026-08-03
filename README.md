@@ -90,11 +90,13 @@ helm install cnpg cnpg/cloudnative-pg \
   --create-namespace
 ```
 
-### ClickHouse (Altinity Operator)
+### ClickHouse
 
-The chart creates `ClickHouseInstallation` and `ClickHouseKeeperInstallation` resources
-directly (inlined templates). The **Altinity ClickHouse Operator must be installed**
-in the cluster for them to work:
+The chart provisions ClickHouse itself by creating `ClickHouseInstallation` and
+`ClickHouseKeeperInstallation` resources (inlined templates). These are declarative
+CRs — the actual ClickHouse/Keeper pods are created by the **Altinity ClickHouse
+Operator**, which is **not part of this chart** and must be installed in the cluster
+beforehand (it also registers the CRDs the chart relies on):
 
 ```bash
 helm repo add altinity https://helm.altinity.com/
