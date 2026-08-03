@@ -50,6 +50,19 @@ spec:
       - name: "keeper-0"
         generateName: "keeper-{{ .Release.Name }}-clickhouse-0"
         spec:
+          {{- if $keeper.nodeSelector }}
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      {{- range $k, $v := $keeper.nodeSelector }}
+                      - key: {{ $k }}
+                        operator: In
+                        values:
+                          - {{ $v | quote }}
+                      {{- end }}
+          {{- end }}
           topologySpreadConstraints:
           - maxSkew: 1
             topologyKey: kubernetes.io/hostname

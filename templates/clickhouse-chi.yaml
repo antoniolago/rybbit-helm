@@ -20,6 +20,10 @@ spec:
         podDistribution: []
         spec:
           securityContext: {}
+          {{- with .Values.clickhouse.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           containers:
             - name: clickhouse
               securityContext: {}

@@ -24,6 +24,14 @@ spec:
   logLevel: info
   enableSuperuserAccess: true
   enablePDB: true
+  {{- with .Values.postgresql.cluster.podSecurityContext }}
+  podSecurityContext:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.postgresql.cluster.securityContext }}
+  securityContext:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   postgresql:
   monitoring:
     disableDefaultQueries: false
