@@ -76,16 +76,42 @@ ingress:
 
 ## External Dependencies
 
-This chart uses the following external dependencies:
+This chart has the following external dependencies:
 
 ### PostgreSQL (CloudNativePG)
 
-The chart uses CloudNativePG chart as a dependency. For detailed configuration options, refer to:
-[CloudNativePG Parameters](https://github.com/cloudnative-pg/charts/blob/main/charts/cluster/values.yaml)
+The chart creates a CloudNativePG `Cluster` resource directly (inlined template).
+The **CloudNativePG operator must be installed** in the cluster for it to work:
 
-### ClickHouse
+```bash
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm install cnpg cnpg/cloudnative-pg \
+  --namespace cnpg-system \
+  --create-namespace
+```
 
-The chart uses Altinity Operator for ClickHouse deployment. For detailed configuration options, refer to:
+### ClickHouse (Altinity Operator)
+
+The chart creates `ClickHouseInstallation` and `ClickHouseKeeperInstallation` resources
+directly (inlined templates). The **Altinity ClickHouse Operator must be installed**
+in the cluster for them to work:
+
+```bash
+helm repo add altinity https://helm.altinity.com/
+helm install clickhouse-operator altinity/altinity-clickhouse-operator \
+  --namespace clickhouse-system \
+  --create-namespace \
+  --set 'watchNamespaces[0]=.*'
+```
+
+> **Why the operator is not bundled anymore:** the operator was previously installed
+> as a subchart, but that is out of scope for the rybbit chart — the operator manages
+> ClickHouse clusters cluster-wide, not just this release — and it made the chart
+> package unreasonably heavy (its CRDs pushed the rendered manifest past Kubernetes'
+> 1MB Secret size limit, breaking `helm install`). Splitting it out keeps the chart
+> lean (~35KB) and lets you manage the operator's lifecycle independently.
+
+For detailed configuration options, refer to:
 [Altinity Clickhouse Parameters](https://github.com/Altinity/helm-charts/blob/main/charts/clickhouse/values.yaml)
 
 ## Configuration
