@@ -141,6 +141,7 @@ jobs:
             --create-namespace \
             --set backend.image.tag="${IMAGE_TAG}" \
             --set client.image.tag="${IMAGE_TAG}" \
+            --set backend.env.BASE_URL="http://localhost:3002" \
             --set postgresql.cluster.instances=1 \
             --set clickhouse.clickhouse.replicasCount=1 \
             --set clickhouse.keeper.replicaCount=1 \
@@ -175,6 +176,10 @@ jobs:
           echo "Backend ready replicas: $BACKEND_READY"
           echo "Client ready replicas: $CLIENT_READY"
 
+      - name: Run end-to-end test
+        run: |
+          bash scripts/e2e-test.sh
+
       - name: Show pod logs on failure
         if: failure()
         run: |
@@ -186,34 +191,6 @@ jobs:
           
           echo "=== Pod descriptions ==="
           kubectl describe pods -n ${{ env.NAMESPACE }}
-
-      - name: Cleanup
-        if: always()
-        run: |
-          echo "=== Cleanup ==="
-          
-          # Uninstall helm release
-          helm uninstall ${{ env.RELEASE_NAME }} -n ${{ env.NAMESPACE }} --timeout 30s || true
-          
-          # Delete ClickHouse CRs that might have operator finalizers
-          kubectl delete clickhouseinstallation --all -n ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 --timeout=10s || true
-          kubectl delete clickhousekeeperinstallation --all -n ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 --timeout=10s || true
-          
-          # Delete CNPG clusters
-          kubectl delete clusters.postgresql.cnpg.io --all -n ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 --timeout=10s || true
-          
-          # Delete namespace
-          kubectl delete namespace ${{ env.NAMESPACE }} --ignore-not-found --timeout 15s || true
-          
-          # Nuclear option: strip namespace finalizers if still stuck
-          if kubectl get namespace ${{ env.NAMESPACE }} &>/dev/null; then
-            echo "Namespace stuck, stripping finalizers..."
-            kubectl get namespace ${{ env.NAMESPACE }} -o json | \
-              jq '.spec.finalizers = []' | \
-              kubectl replace --raw "/api/v1/namespaces/${{ env.NAMESPACE }}/finalize" -f - || true
-          fi
-          
-          echo "✓ Cleanup done"
 
   publish:
     name: Publish to Registries
