@@ -97,6 +97,9 @@ spec:
     files:
       config.d/extra_config.xml: |
         <clickhouse>
+          <text_log>
+            <level>error</level>
+          </text_log>
         </clickhouse>
       users.d/extra_users.xml: |
         <clickhouse>

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-08-04
+
+### Fixed
+- **ClickHouse OOM crash loop:** `system.text_log` was enabled at `trace` level (ClickHouse default), persisting every debug message to disk. During merge-heavy periods this grew `system.text_log` to ~16 GiB with hundreds of unmerged parts, pinning the pod at its 1-core CPU limit and OOM-killing it every ~20 minutes (100+ restarts). The chart now overrides `text_log.level` to `error`.
+
+### Changed
+- Bump ClickHouse resource limits from `1000m/2Gi` to `2000m/4Gi` — the default was undersized for the merge machinery + internal log tables, leaving zero memory headroom (the server pinned its whole budget, and even `TRUNCATE` on system tables was rejected by the OvercommitTracker).
+
 ## [1.0.0] - 2026-08-03
 
 ### Added
