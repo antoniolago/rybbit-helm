@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **ClickHouse OOM crash loop:** `system.text_log` was enabled at `trace` level (ClickHouse default), persisting every debug message to disk. During merge-heavy periods this grew `system.text_log` to ~16 GiB with hundreds of unmerged parts, pinning the pod at its 1-core CPU limit and OOM-killing it every ~20 minutes (100+ restarts). The chart now overrides `text_log.level` to `error`.
+- **E2E test ClickHouse table check:** the test expected `events` and `bot_events` tables at startup, but the backend creates them lazily on first use (`events` on first `/api/track`, `bot_events` on first bot event). The check now runs after the track round-trip, and `bot_events` is a non-blocking warning since the test generates no bot traffic.
 
 ### Changed
 - Bump ClickHouse resource limits from `1000m/2Gi` to `2000m/4Gi` — the default was undersized for the merge machinery + internal log tables, leaving zero memory headroom (the server pinned its whole budget, and even `TRUNCATE` on system tables was rejected by the OvercommitTracker).
