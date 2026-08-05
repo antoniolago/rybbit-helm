@@ -205,19 +205,8 @@ else
   fail "ClickHouse connection with generated credentials ($CH_POD)"
 fi
 
-# The backend runs initializeClickhouse() at startup; these tables must exist.
-CH_TABLES=$(ch_query "SELECT name FROM system.tables WHERE database='default'" 2>/dev/null || true)
-MISSING_CH_TABLES=""
-for t in events bot_events; do
-  if ! echo "$CH_TABLES" | grep -qw "$t"; then
-    MISSING_CH_TABLES="$MISSING_CH_TABLES $t"
-  fi
-done
-if [ -z "$MISSING_CH_TABLES" ]; then
-  pass "Backend-initialized ClickHouse tables exist (events, bot_events)"
-else
-  fail "Backend-initialized ClickHouse tables exist — missing:$MISSING_CH_TABLES"
-fi
+# Tables are created lazily on first use (first track event, first bot event).
+# Defer the check to after the track round-trip in section 4.
 
 SCRATCH_TABLE="e2e_test_$(date +%s)"
 if ch_query "CREATE TABLE $SCRATCH_TABLE (id UInt8) ENGINE=Memory" \
@@ -386,6 +375,21 @@ if [ -n "${SITE_ID:-}" ]; then
     log_warn "  bot_events table rows for site ${SITE_NUMERIC_ID}:"
     ch_query "SELECT site_id, pathname, type, timestamp FROM bot_events WHERE site_id=${SITE_NUMERIC_ID} ORDER BY timestamp DESC LIMIT 5" 2>/dev/null || true
   fi
+fi
+
+# --- Deferred ClickHouse table check: tables are created lazily on first use --
+# At this point the events table must exist (a track event was just written).
+CH_TABLES=$(ch_query "SELECT name FROM system.tables WHERE database='default'" 2>/dev/null || true)
+if echo "$CH_TABLES" | grep -qw "events"; then
+  pass "Backend-initialized ClickHouse tables exist (events)"
+else
+  fail "Backend-initialized ClickHouse tables exist (events)"
+fi
+# bot_events is created lazily on first bot event; no bot traffic in this test.
+if echo "$CH_TABLES" | grep -qw "bot_events"; then
+  pass "Backend-initialized ClickHouse tables exist (bot_events)"
+else
+  log_warn "  bot_events table not yet created (lazy init — requires bot traffic)"
 fi
 
 # ============================================================================
