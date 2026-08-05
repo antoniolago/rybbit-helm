@@ -27,17 +27,18 @@ Components deployed:
 
 🎉 Your Rybbit installation is production-ready!
 
-The post-install job has automatically configured:
-✓ ClickHouse network access (RFC1918 + localhost)
-✓ PostgreSQL analytics database
-✓ PostgreSQL user authentication
-✓ Database schema migrations
+The chart provisions:
+✓ ClickHouse (Altinity operator) with pod-network access
+✓ PostgreSQL (CloudNativePG) with application database and credentials
+✓ Valkey for sessions and queue persistence
+✓ Database schema migrations (run by the backend entrypoint)
 
 Wait for all pods to be ready (~2-3 minutes), then verify:
   kubectl get pods -n {{ .Release.Namespace }}
 
-To verify your installation:
-  curl -fsSL https://raw.githubusercontent.com/antoniolago/rybbit-helm/main/scripts/verify-install.sh | bash
+To run the end-to-end test (Valkey, PostgreSQL, ClickHouse, backend API):
+  curl -fsSL https://raw.githubusercontent.com/antoniolago/rybbit-helm/main/scripts/e2e-test.sh | bash
+  (requires backend.env.BASE_URL set — production enforces a trusted Origin)
 
 For production deployments, update these values:
 - clickhouse.clickhouse.defaultUser.password (default: "changeme")

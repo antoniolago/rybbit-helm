@@ -145,6 +145,7 @@ jobs:
             --create-namespace \
             --set backend.image.tag="${IMAGE_TAG}" \
             --set client.image.tag="${IMAGE_TAG}" \
+            --set backend.env.BASE_URL="http://localhost:3002" \
             --set postgresql.cluster.instances=1 \
             --set clickhouse.clickhouse.replicasCount=1 \
             --set clickhouse.keeper.replicaCount=1 \
@@ -179,30 +180,9 @@ jobs:
           echo "Backend ready replicas: $BACKEND_READY"
           echo "Client ready replicas: $CLIENT_READY"
 
-      - name: Verify backend is fully operational
+      - name: Run end-to-end test
         run: |
-          echo "=== Verifying backend logs for 'Server listening' ==="
-          BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} \
-            -l app.kubernetes.io/component=backend \
-            -o jsonpath='{.items[0].metadata.name}')
-          
-          echo "Checking logs for backend pod: $BACKEND_POD"
-          
-          # Wait up to 60 seconds for the server to be listening
-          for i in {1..12}; do
-            if kubectl logs -n ${{ env.NAMESPACE }} $BACKEND_POD -c backend 2>/dev/null | grep -q "Server listening"; then
-              echo "✓ Backend is fully operational - 'Server listening' found in logs"
-              kubectl logs -n ${{ env.NAMESPACE }} $BACKEND_POD -c backend --tail=20
-              exit 0
-            fi
-            echo "Attempt $i/12: Waiting for backend to start listening..."
-            sleep 5
-          done
-          
-          echo "ERROR: Backend did not show 'Server listening' in logs within 60 seconds"
-          echo "=== Full backend logs ==="
-          kubectl logs -n ${{ env.NAMESPACE }} $BACKEND_POD -c backend || true
-          exit 1
+          bash scripts/e2e-test.sh
 
       - name: Show pod logs on failure
         if: failure()
@@ -215,31 +195,3 @@ jobs:
           
           echo "=== Pod descriptions ==="
           kubectl describe pods -n ${{ env.NAMESPACE }}
-
-      - name: Cleanup
-        if: always()
-        run: |
-          echo "=== Cleanup ==="
-          
-          # Uninstall helm release
-          helm uninstall ${{ env.RELEASE_NAME }} -n ${{ env.NAMESPACE }} --timeout 30s || true
-          
-          # Delete ClickHouse CRs that might have operator finalizers
-          kubectl delete clickhouseinstallation --all -n ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 --timeout=10s || true
-          kubectl delete clickhousekeeperinstallation --all -n ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 --timeout=10s || true
-          
-          # Delete CNPG clusters
-          kubectl delete clusters.postgresql.cnpg.io --all -n ${{ env.NAMESPACE }} --ignore-not-found --force --grace-period=0 --timeout=10s || true
-          
-          # Delete namespace
-          kubectl delete namespace ${{ env.NAMESPACE }} --ignore-not-found --timeout 15s || true
-          
-          # Nuclear option: strip namespace finalizers if still stuck
-          if kubectl get namespace ${{ env.NAMESPACE }} &>/dev/null; then
-            echo "Namespace stuck, stripping finalizers..."
-            kubectl get namespace ${{ env.NAMESPACE }} -o json | \
-              jq '.spec.finalizers = []' | \
-              kubectl replace --raw "/api/v1/namespaces/${{ env.NAMESPACE }}/finalize" -f - || true
-          fi
-          
-          echo "✓ Cleanup done"

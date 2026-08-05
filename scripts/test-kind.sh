@@ -165,6 +165,7 @@ install_chart() {
   log_info "Installing chart (this may take several minutes)..."
   helm upgrade --install "$RELEASE_NAME" . \
     --namespace "$NAMESPACE" \
+    --set backend.env.BASE_URL="http://localhost:3002" \
     --set postgresql.cluster.instances=1 \
     --set clickhouse.clickhouse.replicasCount=1 \
     --set clickhouse.keeper.replicaCount=1 \
@@ -270,7 +271,7 @@ run_tests() {
   sleep 5
   
   # Health check
-  if curl -sf http://localhost:3000/health >/dev/null 2>&1; then
+  if curl -sf http://localhost:3000/api/health >/dev/null 2>&1; then
     log_info "✓ Backend health check passed"
   else
     log_warn "Backend health check failed (may still be initializing)"
@@ -281,18 +282,17 @@ run_tests() {
   
   log_info "All tests completed!"
 
-  # Run comprehensive verification
-  log_info "Running automated verification..."
-  if [ -f "$(dirname "$0")/verify-install.sh" ]; then
-    bash "$(dirname "$0")/verify-install.sh"
-    if [ $? -eq 0 ]; then
-      log_success "Automated verification passed!"
+  # Run the full end-to-end verification (stores + backend API round-trips)
+  log_info "Running end-to-end verification..."
+  if [ -f "$(dirname "$0")/e2e-test.sh" ]; then
+    if bash "$(dirname "$0")/e2e-test.sh"; then
+      log_info "End-to-end verification passed!"
     else
-      log_error "Automated verification failed"
+      log_error "End-to-end verification failed"
       exit 1
     fi
   else
-    log_warn "Verification script not found, skipping..."
+    log_warn "E2E verification script not found, skipping..."
   fi
 }
 
