@@ -15,10 +15,10 @@ A Helm chart for deploying [Rybbit](https://github.com/rybbit-io/rybbit) self-ho
 
 ```bash
 # Install with default values
-helm install rybbit oci://ghcr.io/antoniolago/rybbit --version 1.2.0
+helm install rybbit oci://ghcr.io/antoniolago/rybbit --version 1.3.0
 
 # Install with custom values
-helm install rybbit oci://ghcr.io/antoniolago/rybbit --version 1.2.0 -f values.yaml
+helm install rybbit oci://ghcr.io/antoniolago/rybbit --version 1.3.0 -f values.yaml
 ```
 
 ## Minimal Running Example
@@ -205,7 +205,7 @@ client:
 ## Upgrading
 
 ```bash
-helm upgrade rybbit oci://ghcr.io/antoniolago/rybbit --version 1.2.0 -f values.yaml
+helm upgrade rybbit oci://ghcr.io/antoniolago/rybbit --version 1.3.0 -f values.yaml
 ```
 
 ## Uninstalling
