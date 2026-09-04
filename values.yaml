@@ -168,6 +168,13 @@ postgresql:
   storage:
     size: 10Gi
     storageClass: ""
+  # Point at an externally-managed Postgres instead of the bundled
+  # CloudNativePG cluster: set enabled: false above and existingSecret
+  # here to a Secret (in the release namespace) holding the password.
+  # Mirrors clickhouse.auth.existingSecret below.
+  auth:
+    existingSecret: ""
+    existingSecretKey: "password"
 
 # Valkey (official valkey-io/valkey-helm subchart)
 # Provides session tracking and BullMQ queue persistence for the backend.

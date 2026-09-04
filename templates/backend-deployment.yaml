@@ -215,13 +215,21 @@ spec:
                   name: {{ .Release.Name }}-postgresql-superuser
                   key: user
             {{- end }}
-            {{- /* Add secrets only if using built-in databases */ -}}
-            {{- if and .Values.postgresql.enabled (not (hasKey .Values.backend.env "POSTGRES_PASSWORD")) }}
+            {{- /* Add secrets only if using built-in databases, or an externally-managed one via existingSecret */ -}}
+            {{- if not (hasKey .Values.backend.env "POSTGRES_PASSWORD") }}
+            {{- if .Values.postgresql.auth.existingSecret }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.auth.existingSecret }}
+                  key: {{ .Values.postgresql.auth.existingSecretKey | default "password" }}
+            {{- else if .Values.postgresql.enabled }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ printf "%s-postgresql-superuser" .Release.Name }}
                   key: password
+            {{- end }}
             {{- end }}
 
             {{- /* Valkey/Redis configuration */ -}}
