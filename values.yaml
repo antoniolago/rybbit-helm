@@ -71,6 +71,9 @@ backend:
   betterSecret:
     secretName: ""
     authKey: "better-auth-secret"
+  mapboxSecret:
+    secretName: ""
+    tokenKey: "mapbox-token"
   livenessProbe:
     httpGet:
       path: /health

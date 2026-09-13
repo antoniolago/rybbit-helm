@@ -273,6 +273,17 @@ spec:
                   key: {{ .Values.backend.betterSecret.authKey | default "better-auth-secret" }}
             {{- end }}
             {{- end }}
+
+            {{- /* MAPBOX_TOKEN is fully optional (globe viz falls back to a flat map without it) — only added if the user supplied it directly or configured a secret */ -}}
+            {{- if not (hasKey .Values.backend.env "MAPBOX_TOKEN") }}
+            {{- if .Values.backend.mapboxSecret.secretName }}
+            - name: MAPBOX_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.mapboxSecret.secretName }}
+                  key: {{ .Values.backend.mapboxSecret.tokenKey | default "mapbox-token" }}
+            {{- end }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.backend.service.targetPort }}
