@@ -92,6 +92,30 @@ if ! kubectl get namespace "$NAMESPACE" >/dev/null 2>&1; then
 fi
 
 # ============================================================================
+# 0. PREMISE — every check below assumes a deployed, ready release
+# ============================================================================
+# The backend entrypoint applies the Postgres migrations before it starts
+# serving, and the ClickHouse/Valkey stores have to be up before it gets that
+# far. Wait for the Deployments to finish rolling out instead of racing them:
+# without this, a slow first migration makes the store checks below fail with a
+# misleading "missing tables" message.
+#
+# `rollout status` (rather than a pod poll) is deliberate: a pod that is
+# terminating still reports Ready, which would let the gate through while the
+# replacement pod is still migrating.
+echo ""
+log_info "0. Waiting for the release to be ready"
+for dep in "${RELEASE_NAME}-backend" "${RELEASE_NAME}-client"; do
+  if ! kubectl_ns rollout status "deployment/${dep}" --timeout=300s >/dev/null 2>&1; then
+    log_error "deployment/${dep} did not finish rolling out in 300s — dumping state"
+    kubectl_ns get pods -o wide || true
+    kubectl_ns logs "deployment/${dep}" --tail=60 || true
+    exit 1
+  fi
+done
+pass "Backend and client Deployments rolled out and Ready"
+
+# ============================================================================
 # 1. VALKEY — auth + read/write round-trip with the generated credentials
 # ============================================================================
 echo ""
@@ -162,7 +186,18 @@ else
   fail "App database '$PG_APP_DB' exists"
 fi
 
-MIGRATED_TABLES=$(pg_query "SELECT tablename FROM pg_tables WHERE schemaname='public'" 2>/dev/null || true)
+MIGRATED_TABLES=$(pg_query "SELECT tablename FROM pg_tables WHERE schemaname='public'" 2>/tmp/rybbit-e2e-pgerr || true)
+# Surface real psql/connection errors: swallowing them made a failed query look
+# like "every table is missing", hiding the actual cause. kubectl prints a
+# benign "Defaulted container ..." note on stderr, so filter that out (and keep
+# `grep -v`'s "no match" exit status from tripping `set -e`).
+PG_ERR=""
+if [ -s /tmp/rybbit-e2e-pgerr ]; then
+  PG_ERR=$(grep -v '^Defaulted container' /tmp/rybbit-e2e-pgerr 2>/dev/null | tr '\n' ' ' | tr -s ' ' || true)
+fi
+if [ -n "${PG_ERR// /}" ]; then
+  log_error "  pg_tables query error: $(echo "$PG_ERR" | cut -c1-200)"
+fi
 MISSING_TABLES=""
 for t in user organization sites member account session; do
   if ! echo "$MIGRATED_TABLES" | grep -qw "$t"; then
@@ -239,7 +274,11 @@ kubectl port-forward -n "$NAMESPACE" "svc/${BACKEND_SVC}" "${BACKEND_PORT}:3000"
 PF_PID=$!
 sleep 3
 
-api() { curl -s -o /tmp/rybbit-e2e-body -w '%{http_code}' "$@"; }
+# `|| true`: a failed connection (backend not listening yet, port-forward not
+# established) must be reported as HTTP 000 by the checks below instead of
+# aborting the whole run through `set -e` with curl's own exit status
+# (52 = empty reply from server, 7 = connection refused).
+api() { curl -s -o /tmp/rybbit-e2e-body -w '%{http_code}' "$@" || true; }
 
 HTTP_CODE=$(api http://localhost:${BACKEND_PORT}/api/health)
 if [ "$HTTP_CODE" = "200" ] && grep -q OK /tmp/rybbit-e2e-body; then
