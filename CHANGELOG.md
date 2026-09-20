@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## 1.3.2
 
 ### Fixed
 
@@ -35,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and a failed `curl` now reports HTTP 000 instead of aborting the whole
   script through `set -e` with curl's own exit status and no message.
 
+
+## [1.3.1] - 2026-09-14
+- Mirrors the existing betterSecret pattern: MAPBOX_TOKEN activates the
+  globe visualization but shouldn't have to live as a plaintext value in
+  a values file. Fully optional — if mapboxSecret.secretName is unset
+  and the user hasn't set MAPBOX_TOKEN directly, the env var is simply
+  omitted (globe viz falls back to a flat map, per upstream docs). By Jeff Weisman
+  
 ## [1.1.0] - 2026-08-04
 
 ### Fixed
