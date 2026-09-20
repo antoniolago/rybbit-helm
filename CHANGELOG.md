@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.3.2
+
+### Fixed
+
+- **The backend pod was reported Ready before it could serve.** The chart
+  shipped the backend with all three probes disabled (`enabled: false`) and
+  pointed at `/health` — a path the backend does not serve: it registers the
+  health route under the `/api` prefix (`server.register(apiRoutes, { prefix:
+  "/api" })`), so a probe on `/health` gets a 404 and never turns the pod
+  Ready. Since the image entrypoint runs the Drizzle migrations *before* it
+  starts the HTTP server, "Ready" meant "the entrypoint started", not "the app
+  can answer": `helm --wait` returned with the schema still being migrated, an
+  immediately-following e2e reported `Drizzle migrations applied — missing
+  tables: user organization sites member account session`, and its first
+  `GET /api/health` through the port-forward died with curl exit 52 (empty
+  reply from server). The probe path is now `/api/health` and the readiness,
+  startup and liveness (gated behind the startup probe) probes are enabled by
+  default, so a backend pod is Ready only once it can serve, and `helm --wait`
+  no longer returns before the migrations are applied.
+- **The e2e test no longer races the deployment.** The run is now gated on the
+  release's Deployments finishing their rollout (`kubectl rollout status`, with
+  a state/log dump and a clear error on timeout) before any store check is
+  made — waiting on pod readiness alone is not enough, because a *terminating*
+  pod also reports Ready and would let the test through while its replacement
+  is still migrating. That race is what produced the misleading "missing
+  tables" failure. `psql` errors are printed instead of being swallowed by
+  `2>/dev/null` (a failed query used to look like "every table is missing"),
+  and a failed `curl` now reports HTTP 000 instead of aborting the whole
+  script through `set -e` with curl's own exit status and no message.
+
+
+## [1.3.1] - 2026-09-14
+- Mirrors the existing betterSecret pattern: MAPBOX_TOKEN activates the
+  globe visualization but shouldn't have to live as a plaintext value in
+  a values file. Fully optional — if mapboxSecret.secretName is unset
+  and the user hasn't set MAPBOX_TOKEN directly, the env var is simply
+  omitted (globe viz falls back to a flat map, per upstream docs). By Jeff Weisman
+  
 ## [1.1.0] - 2026-08-04
 
 ### Fixed

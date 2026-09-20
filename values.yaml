@@ -74,11 +74,26 @@ backend:
   mapboxSecret:
     secretName: ""
     tokenKey: "mapbox-token"
+  # Health probes.
+  #
+  # The backend registers its health route under the /api prefix
+  # (`server.register(apiRoutes, { prefix: "/api" })`), so the path is
+  # /api/health — /health returns 404 and a probe pointed at it never
+  # succeeds.
+  #
+  # This matters more than usual here: the image entrypoint runs the Drizzle
+  # migrations BEFORE it starts the HTTP server. With the probes disabled the
+  # pod is reported Ready — and `helm --wait` / `kubectl wait` return — as
+  # soon as the container starts, i.e. while the schema is still being
+  # migrated and the port is still closed. The readiness probe below makes
+  # "Ready" mean "can serve", and the startup probe gives the first boot
+  # (image pull + migrations + Node start) a generous budget before liveness
+  # is allowed to restart the container.
   livenessProbe:
     httpGet:
-      path: /health
+      path: /api/health
       port: 3001
-    enabled: false
+    enabled: true
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 5
@@ -86,9 +101,9 @@ backend:
     successThreshold: 1
   readinessProbe:
     httpGet:
-      path: /health
+      path: /api/health
       port: 3001
-    enabled: false
+    enabled: true
     initialDelaySeconds: 10
     periodSeconds: 10
     timeoutSeconds: 5
@@ -96,9 +111,9 @@ backend:
     successThreshold: 1
   startupProbe:
     httpGet:
-      path: /health
+      path: /api/health
       port: 3001
-    enabled: false
+    enabled: true
     initialDelaySeconds: 5
     periodSeconds: 10
     timeoutSeconds: 5
